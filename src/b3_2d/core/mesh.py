@@ -46,7 +46,11 @@ def process_single_section(args):
         # Get all ply thickness fields dynamically
         airfoil_point_data = airfoil.cell_data_to_point_data().point_data
         te_point_data = te.cell_data_to_point_data().point_data
-        ply_fields = [f for f in airfoil_point_data.keys() if re.match(r"ply_\d+_\w+_\d+_thickness", f)]
+        ply_fields = [
+            f
+            for f in airfoil_point_data.keys()
+            if re.match(r"ply_\d+_\w+_\d+_thickness", f)
+        ]
 
         ply_thicknesses = {}
         for field in ply_fields:
@@ -78,8 +82,8 @@ def process_single_section(args):
                 airfoil_input=web_points_2d_1,
                 plies=[
                     Ply(
-                        thickness=Thickness(type="array", array=web_ply_thickness_1),
-                        material=len(skins) + 1,  # After skin materials
+                        thickness=0.004,
+                        material=len(skins) + 1,
                     ),
                 ],
                 normal_ref=[1, 0],
@@ -88,7 +92,7 @@ def process_single_section(args):
                 airfoil_input=web_points_2d_2,
                 plies=[
                     Ply(
-                        thickness=Thickness(type="array", array=web_ply_thickness_2),
+                        thickness=0.004,
                         material=len(skins) + 2,
                     ),
                 ],
