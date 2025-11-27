@@ -3,6 +3,7 @@
 import os
 import multiprocessing
 import re
+import logging
 from cgfoil.core.main import run_cgfoil
 from cgfoil.models import Skin, Web, Ply, AirfoilMesh, Thickness
 
@@ -10,6 +11,8 @@ try:
     import pyvista as pv
 except ImportError:
     raise ImportError("pyvista is required for b3_2d")
+
+logger = logging.getLogger(__name__)
 
 # Rotation angle around z-axis
 ROTATION_ANGLE = 90
@@ -19,7 +22,7 @@ def process_single_section(args):
     """Process a single section_id."""
     section_id, vtp_file, output_base_dir = args
     try:
-        print(f"Starting processing section_id: {section_id}")
+        logger.info(f"Starting processing section_id: {section_id}")
         # Load VTP file in each process to avoid serialization issues
         mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
@@ -112,9 +115,9 @@ def process_single_section(args):
 
         # Run the meshing
         run_cgfoil(mesh)
-        print(f"Completed processing section_id: {section_id}")
+        logger.info(f"Completed processing section_id: {section_id}")
     except Exception as e:
-        print(f"Error processing section_id {section_id}: {e}")
+        logger.error(f"Error processing section_id {section_id}: {e}")
 
 
 def process_vtp_multi_section(
@@ -130,7 +133,7 @@ def process_vtp_multi_section(
     unique_section_ids = mesh_vtp.cell_data["section_id"]
     unique_ids = sorted(set(unique_section_ids))
     total_sections = len(unique_ids)
-    print(f"Found {total_sections} unique section_ids: {unique_ids}")
+    logger.info(f"Found {total_sections} unique section_ids: {unique_ids}")
 
     # Prepare arguments for multiprocessing
     args_list = [(section_id, vtp_file, output_base_dir) for section_id in unique_ids]
@@ -138,6 +141,6 @@ def process_vtp_multi_section(
     # Use multiprocessing Pool
     if num_processes is None:
         num_processes = min(multiprocessing.cpu_count(), total_sections)
-    print(f"Using {num_processes} processes")
+    logger.info(f"Using {num_processes} processes")
     with multiprocessing.Pool(processes=num_processes) as pool:
         pool.map(process_single_section, args_list)
