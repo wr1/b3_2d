@@ -73,30 +73,29 @@ def process_single_section(args):
                 sort_index=i,
             )
 
-        web_ply_thickness_1 = [0.004] * len(web_points_2d_1)
-        web_ply_thickness_2 = [0.004] * len(web_points_2d_2)
-
         # Define webs
         web_definition = {
             "web1": Web(
-                airfoil_input=web_points_2d_1,
+                points=web_points_2d_1,
                 plies=[
                     Ply(
-                        thickness=0.004,
+                        thickness=Thickness(type="constant", value=0.004),
                         material=len(skins) + 1,
                     ),
                 ],
                 normal_ref=[1, 0],
+                n_cell=10,
             ),
             "web2": Web(
-                airfoil_input=web_points_2d_2,
+                points=web_points_2d_2,
                 plies=[
                     Ply(
-                        thickness=0.004,
+                        thickness=Thickness(type="constant", value=0.004),
                         material=len(skins) + 2,
                     ),
                 ],
                 normal_ref=[-1, 0],
+                n_cell=10,
             ),
         }
 

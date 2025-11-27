@@ -8,8 +8,9 @@ try:
 except ImportError:
     process_vtp_multi_section = None
 
-@patch('b3_2d.core.mesh.pv.read')
-@patch('b3_2d.core.mesh.multiprocessing.Pool')
+
+@patch("b3_2d.core.mesh.pv.read")
+@patch("b3_2d.core.mesh.multiprocessing.Pool")
 def test_process_vtp_multi_section(mock_pool, mock_pv_read):
     """Test process_vtp_multi_section with mocked dependencies."""
     if process_vtp_multi_section is None:

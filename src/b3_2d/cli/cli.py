@@ -21,6 +21,7 @@ def mesh_command(
 ) -> None:
     """Mesh sections from VTP file."""
     from ..core.mesh import process_vtp_multi_section
+
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     process_vtp_multi_section(vtp_file, output_dir, num_processes)
@@ -34,6 +35,7 @@ def plot_command(
 ) -> None:
     """Plot a mesh."""
     from ..core.plotting import plot_mesh
+
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     mesh = pv.read(mesh_file)

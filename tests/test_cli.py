@@ -1,5 +1,6 @@
 """Tests for CLI functionality."""
 
+import sys
 import pytest
 from b3_2d.cli.cli import app
 
@@ -12,15 +13,17 @@ def test_cli_app():
 
 def test_mesh_command_help(capsys):
     """Test mesh command help output."""
+    sys.argv = ["b3-2d", "mesh", "--help"]
     with pytest.raises(SystemExit):
-        app.run(["mesh", "--help"])
+        app.run()
     captured = capsys.readouterr()
     assert "Process VTP file for multi-section meshing" in captured.out
 
 
 def test_plot_command_help(capsys):
     """Test plot command help output."""
+    sys.argv = ["b3-2d", "plot", "--help"]
     with pytest.raises(SystemExit):
-        app.run(["plot", "--help"])
+        app.run()
     captured = capsys.readouterr()
     assert "Plot a mesh" in captured.out
