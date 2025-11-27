@@ -47,10 +47,14 @@ def process_single_section(args):
         airfoil = section_mesh.threshold(value=(0, 12), scalars="panel_id")
         te = section_mesh.threshold(value=(-3, -3), scalars="panel_id")
         points_2d = airfoil.points[:, :2].tolist()[:-1] + te.points[:, :2].tolist()[1:]
-        points_2d = [tuple(p) for p in points_2d]  # Convert to list of tuples for validation
+        points_2d = [
+            tuple(p) for p in points_2d
+        ]  # Convert to list of tuples for validation
 
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
-            logger.warning(f"Invalid or insufficient airfoil points for section {section_id}, skipping")
+            logger.warning(
+                f"Invalid or insufficient airfoil points for section {section_id}, skipping"
+            )
             return
 
         # Extract webs
@@ -58,8 +62,12 @@ def process_single_section(args):
         web2 = section_mesh.threshold(value=(-2, -2), scalars="panel_id")
         web_points_2d_1 = web1.points[:, :2].tolist()
         web_points_2d_2 = web2.points[:, :2].tolist()
-        web_points_2d_1 = [tuple(p) for p in web_points_2d_1]  # Convert to list of tuples
-        web_points_2d_2 = [tuple(p) for p in web_points_2d_2]  # Convert to list of tuples
+        web_points_2d_1 = [
+            tuple(p) for p in web_points_2d_1
+        ]  # Convert to list of tuples
+        web_points_2d_2 = [
+            tuple(p) for p in web_points_2d_2
+        ]  # Convert to list of tuples
 
         # Get all ply thickness fields dynamically
         airfoil_point_data = airfoil.cell_data_to_point_data().point_data
@@ -83,7 +91,9 @@ def process_single_section(args):
                     ply_thicknesses[key] = combined_thickness
 
         if not ply_thicknesses:
-            logger.warning(f"No ply thicknesses found for section {section_id}, skipping")
+            logger.warning(
+                f"No ply thicknesses found for section {section_id}, skipping"
+            )
             return
 
         # Define skins dynamically
@@ -97,9 +107,18 @@ def process_single_section(args):
 
         # Define webs using full mesh like in cgfoil multi vtp example
         # Use coord_input with the full list of points, and assigned arrays for thickness
+
         web_definition = {}
-        if web_points_2d_1 and len(web_points_2d_1) >= 2 and validate_points(web_points_2d_1):
-            web_thickness = [0.004] * len(web_points_2d_1)  # Assigned array, constant for simplicity
+        if (
+            web_points_2d_1
+            and len(web_points_2d_1) >= 2
+            and validate_points(web_points_2d_1)
+        ):
+            # next job is to get real thicknesses from the array
+            # in fact for each ply that has nonzero thickness on this web, a ply should be added to plies list
+            web_thickness = [0.004] * len(
+                web_points_2d_1
+            )  # Assigned array, constant for simplicity
             web_definition["web1"] = Web(
                 coord_input=web_points_2d_1,  # Full list of points
                 plies=[
@@ -111,8 +130,14 @@ def process_single_section(args):
                 normal_ref=[1, 0],
                 n_elem=None,
             )
-        if web_points_2d_2 and len(web_points_2d_2) >= 2 and validate_points(web_points_2d_2):
-            web_thickness = [0.004] * len(web_points_2d_2)  # Assigned array, constant for simplicity
+        if (
+            web_points_2d_2
+            and len(web_points_2d_2) >= 2
+            and validate_points(web_points_2d_2)
+        ):
+            web_thickness = [0.004] * len(
+                web_points_2d_2
+            )  # Assigned array, constant for simplicity
             web_definition["web2"] = Web(
                 coord_input=web_points_2d_2,  # Full list of points
                 plies=[
