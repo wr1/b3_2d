@@ -107,45 +107,55 @@ def process_single_section(args):
 
         # Define webs using full mesh like in cgfoil multi vtp example
         # Use coord_input with the full list of points, and assigned arrays for thickness
-
+        web1_point_data = web1.cell_data_to_point_data().point_data
+        web2_point_data = web2.cell_data_to_point_data().point_data
+        material_counter = len(skins) + 1
         web_definition = {}
+        plies1 = []
+        for field in ply_fields:
+            if field in web1_point_data:
+                thickness_array = list(web1_point_data[field] * 0.01 + 0.04)
+                if any(t > 0 for t in thickness_array):
+                    plies1.append(
+                        Ply(
+                            thickness=Thickness(type="array", array=thickness_array),
+                            material=material_counter,
+                        )
+                    )
+                    material_counter += 1
         if (
             web_points_2d_1
             and len(web_points_2d_1) >= 2
             and validate_points(web_points_2d_1)
+            and plies1
         ):
-            # next job is to get real thicknesses from the array
-            # in fact for each ply that has nonzero thickness on this web, a ply should be added to plies list
-            web_thickness = [0.004] * len(
-                web_points_2d_1
-            )  # Assigned array, constant for simplicity
             web_definition["web1"] = Web(
                 coord_input=web_points_2d_1,  # Full list of points
-                plies=[
-                    Ply(
-                        thickness=Thickness(type="array", array=web_thickness),
-                        material=len(skins) + 1,
-                    ),
-                ],
+                plies=plies1,
                 normal_ref=[1, 0],
                 n_elem=None,
             )
+        plies2 = []
+        for field in ply_fields:
+            if field in web2_point_data:
+                thickness_array = list(web2_point_data[field] * 0.01 + 0.04)
+                if any(t > 0 for t in thickness_array):
+                    plies2.append(
+                        Ply(
+                            thickness=Thickness(type="array", array=thickness_array),
+                            material=material_counter,
+                        )
+                    )
+                    material_counter += 1
         if (
             web_points_2d_2
             and len(web_points_2d_2) >= 2
             and validate_points(web_points_2d_2)
+            and plies2
         ):
-            web_thickness = [0.004] * len(
-                web_points_2d_2
-            )  # Assigned array, constant for simplicity
             web_definition["web2"] = Web(
                 coord_input=web_points_2d_2,  # Full list of points
-                plies=[
-                    Ply(
-                        thickness=Thickness(type="array", array=web_thickness),
-                        material=len(skins) + 2,
-                    ),
-                ],
+                plies=plies2,
                 normal_ref=[-1, 0],
                 n_elem=None,
             )
