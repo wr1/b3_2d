@@ -81,8 +81,8 @@ def process_single_section(args):
         ply_thicknesses = {}
         for field in ply_fields:
             if field in te_point_data:
-                airfoil_thickness = list(airfoil_point_data[field] * 0.01 + 0.04)[:-1]
-                te_thickness = list(te_point_data[field] * 1 + 0.04)[1:]
+                airfoil_thickness = list(airfoil_point_data[field])[:-1]
+                te_thickness = list(te_point_data[field])[1:]
                 combined_thickness = airfoil_thickness + te_thickness
                 match = re.match(r"ply_(\d+)_(\w+)_(\d+)_thickness", field)
                 if match:
@@ -114,7 +114,7 @@ def process_single_section(args):
         plies1 = []
         for field in ply_fields:
             if field in web1_point_data:
-                thickness_array = list(web1_point_data[field] * 0.01 + 0.04)
+                thickness_array = list(web1_point_data[field])
                 if any(t > 0 for t in thickness_array):
                     plies1.append(
                         Ply(
@@ -138,7 +138,7 @@ def process_single_section(args):
         plies2 = []
         for field in ply_fields:
             if field in web2_point_data:
-                thickness_array = list(web2_point_data[field] * 0.01 + 0.04)
+                thickness_array = list(web2_point_data[field])
                 if any(t > 0 for t in thickness_array):
                     plies2.append(
                         Ply(
@@ -159,6 +159,21 @@ def process_single_section(args):
                 normal_ref=[-1, 0],
                 n_elem=None,
             )
+
+        # Log assigned thickness arrays for airfoil (skins)
+        logger.info(f"Assigned thickness arrays for airfoil skins: {list(skins.keys())}")
+        for skin_name, skin in skins.items():
+            thickness = skin.thickness.array
+            if thickness:
+                logger.info(f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}")
+
+        # Log assigned thickness arrays for webs
+        logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
+        for web_name, web in web_definition.items():
+            for i, ply in enumerate(web.plies):
+                thickness = ply.thickness.array
+                if thickness:
+                    logger.info(f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}")
 
         # Create AirfoilMesh
         mesh = AirfoilMesh(
