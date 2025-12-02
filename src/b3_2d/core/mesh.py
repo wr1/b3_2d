@@ -7,7 +7,6 @@ import logging
 import pickle
 import math
 import numpy as np
-import pyvista as pv
 from cgfoil.core.main import generate_mesh
 from cgfoil.models import Skin, Web, Ply, AirfoilMesh, Thickness
 from cgfoil.cli.export import export_mesh_to_anba
@@ -32,6 +31,7 @@ def validate_points(points_2d):
 
 def process_single_section(args):
     """Process a single section_id."""
+    import pyvista as pv
     section_id, vtp_file, output_base_dir = args
     try:
         logger.info(f"Starting processing section_id: {section_id}")
@@ -111,6 +111,9 @@ def process_single_section(args):
 
         # Define webs using actual ply thicknesses
         web_definition = {}
+        material_counter = len(skins) + 1
+        web1_point_data = web1.cell_data_to_point_data().point_data
+        web2_point_data = web2.cell_data_to_point_data().point_data
         plies1 = []
         for field in ply_fields:
             if field in web1_point_data:
@@ -307,6 +310,7 @@ def process_vtp_multi_section(
 ):
     """Process VTP file for all unique section_ids, outputting to subdirectories, using multiprocessing."""
     # Load VTP file to get unique ids
+    import pyvista as pv
     mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
     # Get unique section_ids
