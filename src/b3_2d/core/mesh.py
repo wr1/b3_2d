@@ -1,6 +1,7 @@
 """Meshing functionality for b3_2d using cgfoil."""
 
 import os
+import sys
 import multiprocessing
 import re
 import logging
@@ -8,6 +9,7 @@ import pickle
 import math
 import numpy as np
 import pyvista as pv
+from rich.progress import Progress
 from cgfoil.core.main import generate_mesh
 from cgfoil.models import Skin, Web, Ply, AirfoilMesh, Thickness
 from cgfoil.cli.export import export_mesh_to_anba
@@ -51,7 +53,9 @@ def get_ply_thicknesses(airfoil, te, web_data):
     airfoil_point_data = airfoil.cell_data_to_point_data().point_data
     te_point_data = te.cell_data_to_point_data().point_data
     ply_fields = [
-        f for f in airfoil_point_data.keys() if re.match(r"ply_\d+_\w+_\d+_thickness", f)
+        f
+        for f in airfoil_point_data.keys()
+        if re.match(r"ply_\d+_\w+_\d+_thickness", f)
     ]
     ply_thicknesses = {}
     for field in ply_fields:
@@ -73,7 +77,10 @@ def get_ply_thicknesses(airfoil, te, web_data):
                 thickness_array = list(point_data[field])
                 if any(t > 0 for t in thickness_array):
                     plies.append(
-                        Ply(thickness=Thickness(type="array", array=thickness_array), material=0)  # material set later
+                        Ply(
+                            thickness=Thickness(type="array", array=thickness_array),
+                            material=0,
+                        )  # material set later
                     )
         web_plies_data.append(plies)
     return ply_thicknesses, ply_fields, web_plies_data
@@ -91,12 +98,19 @@ def define_skins_and_webs(ply_thicknesses, web_data, web_plies_data):
     web_definition = {}
     material_counter = len(skins) + 1
     for i, ((web_points, _), plies) in enumerate(zip(web_data, web_plies_data)):
-        if web_points and len(web_points) >= 2 and validate_points(web_points) and plies:
+        if (
+            web_points
+            and len(web_points) >= 2
+            and validate_points(web_points)
+            and plies
+        ):
             for ply in plies:
                 ply.material = material_counter
                 material_counter += 1
             normal_ref = [1, 0] if i == 0 else [-1, 0]  # Adjust for more webs if needed
-            web_definition[f"web{i+1}"] = Web(points=web_points, plies=plies, normal_ref=normal_ref, n_elem=None)
+            web_definition[f"web{i + 1}"] = Web(
+                points=web_points, plies=plies, normal_ref=normal_ref, n_elem=None
+            )
     return skins, web_definition
 
 
@@ -106,45 +120,69 @@ def log_thicknesses(skins, web_definition):
     for skin_name, skin in skins.items():
         thickness = skin.thickness.array
         if thickness:
-            logger.info(f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}")
+            logger.info(
+                f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}"
+            )
     logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
     for web_name, web in web_definition.items():
         for i, ply in enumerate(web.plies):
             thickness = ply.thickness.array
             if thickness:
-                logger.info(f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}")
+                logger.info(
+                    f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}"
+                )
 
 
 def process_single_section(args):
     """Process a single section_id."""
     section_id, vtp_file, output_base_dir = args
+    section_dir = os.path.join(output_base_dir, f"section_{section_id}")
+    os.makedirs(section_dir, exist_ok=True)
+
+    # Temporarily set root logger level to WARNING to suppress stdout logging
+    root_logger = logging.getLogger()
+    original_level = root_logger.level
+    root_logger.setLevel(logging.WARNING)
+
+    # Set up logging to section-specific file
+    section_log_file = os.path.join(section_dir, "2dmesh.log")
+    section_file_handler = logging.FileHandler(section_log_file)
+    section_file_handler.setLevel(logging.INFO)
+    logger.addHandler(section_file_handler)
+
     try:
         logger.info(f"Starting processing section_id: {section_id}")
         # Load VTP file in each process to avoid serialization issues
         mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
-        # Create subdirectory
-        section_dir = os.path.join(output_base_dir, f"section_{section_id}")
-        os.makedirs(section_dir, exist_ok=True)
-
         # Filter mesh for this section_id
-        section_mesh = mesh_vtp.threshold(value=(section_id, section_id), scalars="section_id")
+        section_mesh = mesh_vtp.threshold(
+            value=(section_id, section_id), scalars="section_id"
+        )
 
         # Extract points
         points_2d, web_data, airfoil, te = extract_airfoil_and_web_points(section_mesh)
 
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
-            logger.warning(f"Invalid or insufficient airfoil points for section {section_id}, skipping")
+            logger.warning(
+                f"Invalid or insufficient airfoil points for section {section_id}, skipping"
+            )
             return
 
         # Get ply thicknesses
-        ply_thicknesses, ply_fields, web_plies_data = get_ply_thicknesses(airfoil, te, web_data)
+        ply_thicknesses, ply_fields, web_plies_data = get_ply_thicknesses(
+            airfoil, te, web_data
+        )
         if not ply_thicknesses:
-            logger.warning(f"No ply thicknesses found for section {section_id}, skipping")
+            logger.warning(
+                f"No ply thicknesses found for section {section_id}, skipping"
+            )
             return
 
         # Define skins and webs
-        skins, web_definition = define_skins_and_webs(ply_thicknesses, web_data, web_plies_data)
+        skins, web_definition = define_skins_and_webs(
+            ply_thicknesses, web_data, web_plies_data
+        )
 
         # Log thicknesses
         log_thicknesses(skins, web_definition)
@@ -182,9 +220,16 @@ def process_single_section(args):
         logger.info(f"Completed processing section_id: {section_id}")
     except Exception as e:
         logger.error(f"Error processing section_id {section_id}: {e}", exc_info=True)
+    finally:
+        # Remove the section-specific file handler
+        logger.removeHandler(section_file_handler)
+        # Restore root logger level
+        root_logger.setLevel(original_level)
 
 
-def process_vtp_multi_section(vtp_file: str, output_base_dir: str, num_processes: int = None):
+def process_vtp_multi_section(
+    vtp_file: str, output_base_dir: str, num_processes: int = None
+):
     """Process VTP file for all unique section_ids, outputting to subdirectories, using multiprocessing."""
     mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
@@ -194,14 +239,13 @@ def process_vtp_multi_section(vtp_file: str, output_base_dir: str, num_processes
     unique_section_ids = mesh_vtp.cell_data["section_id"]
     unique_ids = sorted(set(unique_section_ids))
     total_sections = len(unique_ids)
-    logger.info(f"Found {total_sections} unique section_ids: {unique_ids}")
+    logger.info(
+        f"Found {total_sections} unique section_ids: {np.array(unique_ids).tolist()}"
+    )
 
-    # Prepare arguments for multiprocessing
-    args_list = [(section_id, vtp_file, output_base_dir) for section_id in unique_ids]
-
-    # Use multiprocessing Pool
-    if num_processes is None:
-        num_processes = min(multiprocessing.cpu_count(), total_sections)
-    logger.info(f"Using {num_processes} processes")
-    with multiprocessing.Pool(processes=num_processes) as pool:
-        pool.map(process_single_section, args_list)
+    # Process sections with progress bar
+    with Progress() as progress:
+        task = progress.add_task("Processing sections", total=total_sections)
+        for section_id in unique_ids:
+            process_single_section((section_id, vtp_file, output_base_dir))
+            progress.update(task, advance=1)
