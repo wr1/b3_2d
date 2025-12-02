@@ -296,9 +296,9 @@ def process_single_section(args):
         logger.info(f"Mesh saved to {mesh_file}")
 
         # Export to ANBA
-        anba_file = os.path.join(section_dir, "output.anba")
+        anba_file = os.path.join(section_dir, "anba.json")
         export_mesh_to_anba(mesh_file, anba_file)
-        logger.info(f"Exported ANBA for section_id {section_id} to {section_dir}")
+        logger.info(f"Exported ANBA JSON for section_id {section_id} to {section_dir}")
 
         logger.info(f"Completed processing section_id: {section_id}")
     except Exception as e:
