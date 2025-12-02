@@ -10,6 +10,7 @@ import numpy as np
 from cgfoil.core.main import generate_mesh
 from cgfoil.models import Skin, Web, Ply, AirfoilMesh, Thickness
 from cgfoil.cli.export import export_mesh_to_anba
+from cgfoil.utils.io import save_mesh_to_vtk
 
 logger = logging.getLogger(__name__)
 
@@ -194,12 +195,16 @@ def process_single_section(args):
             n_elem=None,  # Do not set to avoid remeshing and messing with thickness distribution
             plot=False,  # Disable plotting in parallel to avoid issues
             plot_filename=None,
-            vtk=None,
+            vtk=os.path.join(section_dir, "output.vtk"),
         )
 
         # Run the meshing
         mesh_result = generate_mesh(mesh)
         logger.info(f"Cross-sectional areas: {mesh_result.areas}")
+
+        # Save VTK
+        if mesh.vtk:
+            save_mesh_to_vtk(mesh_result, mesh, mesh.vtk)
 
         # Save mesh
         mesh_file = os.path.join(section_dir, "mesh.pck")
