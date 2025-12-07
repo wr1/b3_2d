@@ -53,7 +53,9 @@ def get_ply_thicknesses(airfoil, te, web_data):
     airfoil_point_data = airfoil.cell_data_to_point_data().point_data
     te_point_data = te.cell_data_to_point_data().point_data
     ply_fields = [
-        f for f in airfoil_point_data.keys() if re.match(r"ply_\d+_\w+_\d+_thickness", f)
+        f
+        for f in airfoil_point_data.keys()
+        if re.match(r"ply_\d+_\w+_\d+_thickness", f)
     ]
     ply_thicknesses = {}
     for field in ply_fields:
@@ -75,7 +77,10 @@ def get_ply_thicknesses(airfoil, te, web_data):
                 thickness_array = list(point_data[field])
                 if any(t > 0 for t in thickness_array):
                     plies.append(
-                        Ply(thickness=Thickness(type="array", array=thickness_array), material=0)  # material set later
+                        Ply(
+                            thickness=Thickness(type="array", array=thickness_array),
+                            material=0,
+                        )  # material set later
                     )
         web_plies_data.append(plies)
     return ply_thicknesses, ply_fields, web_plies_data
@@ -93,12 +98,19 @@ def define_skins_and_webs(ply_thicknesses, web_data, web_plies_data):
     web_definition = {}
     material_counter = len(skins) + 1
     for i, ((web_points, _), plies) in enumerate(zip(web_data, web_plies_data)):
-        if web_points and len(web_points) >= 2 and validate_points(web_points) and plies:
+        if (
+            web_points
+            and len(web_points) >= 2
+            and validate_points(web_points)
+            and plies
+        ):
             for ply in plies:
                 ply.material = material_counter
                 material_counter += 1
             normal_ref = [1, 0] if i == 0 else [-1, 0]  # Adjust for more webs if needed
-            web_definition[f"web{i+1}"] = Web(points=web_points, plies=plies, normal_ref=normal_ref, n_elem=None)
+            web_definition[f"web{i + 1}"] = Web(
+                points=web_points, plies=plies, normal_ref=normal_ref, n_elem=None
+            )
     return skins, web_definition
 
 
@@ -108,13 +120,17 @@ def log_thicknesses(skins, web_definition):
     for skin_name, skin in skins.items():
         thickness = skin.thickness.array
         if thickness:
-            logger.info(f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}")
+            logger.info(
+                f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}"
+            )
     logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
     for web_name, web in web_definition.items():
         for i, ply in enumerate(web.plies):
             thickness = ply.thickness.array
             if thickness:
-                logger.info(f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}")
+                logger.info(
+                    f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}"
+                )
 
 
 def process_single_section(args):
@@ -140,23 +156,33 @@ def process_single_section(args):
         mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
         # Filter mesh for this section_id
-        section_mesh = mesh_vtp.threshold(value=(section_id, section_id), scalars="section_id")
+        section_mesh = mesh_vtp.threshold(
+            value=(section_id, section_id), scalars="section_id"
+        )
 
         # Extract points
         points_2d, web_data, airfoil, te = extract_airfoil_and_web_points(section_mesh)
 
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
-            logger.warning(f"Invalid or insufficient airfoil points for section {section_id}, skipping")
+            logger.warning(
+                f"Invalid or insufficient airfoil points for section {section_id}, skipping"
+            )
             return
 
         # Get ply thicknesses
-        ply_thicknesses, ply_fields, web_plies_data = get_ply_thicknesses(airfoil, te, web_data)
+        ply_thicknesses, ply_fields, web_plies_data = get_ply_thicknesses(
+            airfoil, te, web_data
+        )
         if not ply_thicknesses:
-            logger.warning(f"No ply thicknesses found for section {section_id}, skipping")
+            logger.warning(
+                f"No ply thicknesses found for section {section_id}, skipping"
+            )
             return
 
         # Define skins and webs
-        skins, web_definition = define_skins_and_webs(ply_thicknesses, web_data, web_plies_data)
+        skins, web_definition = define_skins_and_webs(
+            ply_thicknesses, web_data, web_plies_data
+        )
 
         # Log thicknesses
         log_thicknesses(skins, web_definition)
@@ -201,7 +227,9 @@ def process_single_section(args):
         root_logger.setLevel(original_level)
 
 
-def process_vtp_multi_section(vtp_file: str, output_base_dir: str, num_processes: int = None):
+def process_vtp_multi_section(
+    vtp_file: str, output_base_dir: str, num_processes: int = None
+):
     """Process VTP file for all unique section_ids, outputting to subdirectories, using multiprocessing."""
     mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
 
@@ -211,7 +239,7 @@ def process_vtp_multi_section(vtp_file: str, output_base_dir: str, num_processes
     unique_section_ids = mesh_vtp.cell_data["section_id"]
     unique_ids = sorted(set(unique_section_ids))
     total_sections = len(unique_ids)
-    logger.info(f"Found {total_sections} unique section_ids: {unique_ids}")
+    logger.info(f"Found {total_sections} unique section_ids: {np.array(unique_ids)}")
 
     # Process sections with progress bar
     with Progress() as progress:
