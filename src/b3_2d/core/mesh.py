@@ -21,12 +21,43 @@ logger = logging.getLogger(__name__)
 ROTATION_ANGLE = 90
 
 
+def sort_points_by_y(mesh: pv.PolyData) -> pv.PolyData:
+    """
+    For a triangular PolyData mesh:
+    - Sort points by y-coordinate (min to max)
+    - Update triangle connectivity
+    - Keep point_data correctly aligned
+    """
+    mesh = mesh.copy()
+    n = mesh.n_points
+
+    # Sort by y-coordinate
+    sorted_indices = sorted(range(n), key=lambda i: mesh.points[i, 1])
+    mesh.points = mesh.points[sorted_indices]
+
+    # Create mapping from old to new indices
+    old_to_new = {old: new for new, old in enumerate(sorted_indices)}
+
+    # Update connectivity
+    cells = mesh.cells.copy()
+    cells[1::4] = [old_to_new[cells[i]] for i in range(1, len(cells), 4)]
+    cells[2::4] = [old_to_new[cells[i]] for i in range(2, len(cells), 4)]
+    cells[3::4] = [old_to_new[cells[i]] for i in range(3, len(cells), 4)]
+    mesh.cells = cells
+
+    # Update point_data
+    for key in mesh.point_data.keys():
+        mesh.point_data[key] = mesh.point_data[key][sorted_indices]
+
+    return mesh
+
+
 def validate_points(points_2d):
-    """Validate that points_2d is a list of tuples with 2 floats."""
+    """Validate that points_2d is a list of lists or tuples with 2 floats."""
     if not isinstance(points_2d, list):
         return False
     for p in points_2d:
-        if not isinstance(p, tuple) or len(p) != 2:
+        if not isinstance(p, (list, tuple)) or len(p) != 2:
             return False
         if not all(isinstance(c, (int, float)) for c in p):
             return False
@@ -35,82 +66,83 @@ def validate_points(points_2d):
 
 def extract_airfoil_and_web_points(section_mesh):
     """Extract airfoil and web points from section mesh."""
-    airfoil = section_mesh.threshold(value=(0, 12), scalars="panel_id")
-    te = section_mesh.threshold(value=(-3, -3), scalars="panel_id")
-    points_2d = airfoil.points[:, :2].tolist()[:-1] + te.points[:, :2].tolist()[1:]
-    points_2d = [tuple(p) for p in points_2d]
-    web_ids = [-1, -2]
-    web_data = []
-    for web_id in web_ids:
-        web_mesh = section_mesh.threshold(value=(web_id, web_id), scalars="panel_id")
-        web_points = [tuple(p) for p in web_mesh.points[:, :2].tolist()]
-        web_data.append((web_points, web_mesh))
-    return points_2d, web_data, airfoil, te
+    min_panel_id = section_mesh.cell_data["panel_id"].min()
+    airfoil = pv.merge(
+        [
+            section_mesh.threshold(
+                value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
+            ),
+            sort_points_by_y(
+                section_mesh.threshold(
+                    value=(min_panel_id, min_panel_id), scalars="panel_id"
+                )
+            ),
+        ]
+    )
+    points_2d = airfoil.points[:, :2].tolist()
+
+    web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
+    web2 = section_mesh.threshold(value=(-2, -2), scalars="panel_id")
+
+    web_points_2d_1 = web1.points[:, :2].tolist()
+    web_points_2d_2 = web2.points[:, :2].tolist()
+
+    web_data = [(web_points_2d_1, web1), (web_points_2d_2, web2)]
+
+    return points_2d, web_data, airfoil
 
 
-def get_ply_thicknesses(airfoil, te, web_data):
-    """Get ply thicknesses from mesh data."""
-    airfoil_point_data = airfoil.cell_data_to_point_data().point_data
-    te_point_data = te.cell_data_to_point_data().point_data
-    ply_fields = [
-        f
-        for f in airfoil_point_data.keys()
-        if re.match(r"ply_\d+_\w+_\d+_thickness", f)
+def get_thickness_arrays(mesh):
+    """Get thickness arrays from mesh."""
+    mesh_point = mesh.cell_data_to_point_data()
+    thickness_keys = [
+        k for k in mesh_point.point_data.keys() if re.match(r"ply_.*_thickness", k)
     ]
-    ply_thicknesses = {}
-    for field in ply_fields:
-        if field in te_point_data:
-            airfoil_thickness = list(airfoil_point_data[field])[:-1]
-            te_thickness = list(te_point_data[field])[1:]
-            combined_thickness = airfoil_thickness + te_thickness
-            match = re.match(r"ply_(\d+)_(\w+)_(\d+)_thickness", field)
-            if match:
-                num1, slab, num2 = match.groups()
-                key = f"{num1}_{slab}_{num2}"
-                ply_thicknesses[key] = combined_thickness
-    web_plies_data = []
-    for web_points, web_mesh in web_data:
-        point_data = web_mesh.cell_data_to_point_data().point_data
-        plies = []
-        for field in ply_fields:
-            if field in point_data:
-                thickness_array = list(point_data[field])
-                if any(t > 0 for t in thickness_array):
-                    plies.append(
-                        Ply(
-                            thickness=Thickness(type="array", array=thickness_array),
-                            material=0,
-                        )  # material set later
-                    )
-        web_plies_data.append(plies)
-    return ply_thicknesses, ply_fields, web_plies_data
+    thickness_keys.sort(key=lambda x: int(re.search(r"ply_(\d+)", x).group(1)))
+    return {k: mesh_point.point_data[k] for k in thickness_keys}
 
 
-def define_skins_and_webs(ply_thicknesses, web_data, web_plies_data):
+def get_ply_thicknesses(airfoil, web_data):
+    """Get ply thicknesses from mesh data."""
+    airfoil_thicknesses = get_thickness_arrays(airfoil)
+
+    web_thicknesses = []
+    for _, web_mesh in web_data:
+        web_thicknesses.append(get_thickness_arrays(web_mesh))
+
+    return airfoil_thicknesses, web_thicknesses
+
+
+def define_skins_and_webs(airfoil_thicknesses, web_data, web_thicknesses):
     """Define skins and webs from thicknesses and points."""
     skins = {}
-    for i, (key, thickness) in enumerate(ply_thicknesses.items()):
-        skins[f"skin_{i}"] = Skin(
-            thickness=Thickness(type="array", array=thickness),
-            material=i + 1,
+    material_id = 1
+    for i, (key, thickness_array) in enumerate(airfoil_thicknesses.items(), start=1):
+        skins[f"skin{i}"] = Skin(
+            thickness=Thickness(type="array", array=list(thickness_array)),
+            material=material_id,
             sort_index=i,
         )
+        material_id += 1
+
     web_definition = {}
-    material_counter = len(skins) + 1
-    for i, ((web_points, _), plies) in enumerate(zip(web_data, web_plies_data)):
-        if (
-            web_points
-            and len(web_points) >= 2
-            and validate_points(web_points)
-            and plies
-        ):
-            for ply in plies:
-                ply.material = material_counter
-                material_counter += 1
-            normal_ref = [1, 0] if i == 0 else [-1, 0]  # Adjust for more webs if needed
-            web_definition[f"web{i + 1}"] = Web(
-                points=web_points, plies=plies, normal_ref=normal_ref, n_elem=None
+    web_meshes = [
+        ("web1", web_thicknesses[0], web_data[0][0]),
+        ("web2", web_thicknesses[1], web_data[1][0]),
+    ]
+    for web_name, thicknesses, points in web_meshes:
+        plies = [
+            Ply(
+                thickness=Thickness(type="array", array=list(thicknesses[key])),
+                material=material_id + j,
             )
+            for j, key in enumerate(thicknesses)
+        ]
+        material_id += len(thicknesses)
+        normal_ref = [1, 0] if web_name == "web1" else [-1, 0]
+        web_definition[web_name] = Web(
+            coord_input=points, plies=plies, normal_ref=normal_ref
+        )
     return skins, web_definition
 
 
@@ -153,7 +185,6 @@ def process_single_section(args):
     try:
         logger.info(f"Starting processing section_id: {section_id}")
         # Load VTP file in each process to avoid serialization issues
-        # mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
         mesh_vtp = pv.read(vtp_file).rotate_z(-90).rotate_x(180)
 
         # Filter mesh for this section_id
@@ -162,7 +193,7 @@ def process_single_section(args):
         )
 
         # Extract points
-        points_2d, web_data, airfoil, te = extract_airfoil_and_web_points(section_mesh)
+        points_2d, web_data, airfoil = extract_airfoil_and_web_points(section_mesh)
 
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
             logger.warning(
@@ -171,10 +202,8 @@ def process_single_section(args):
             return
 
         # Get ply thicknesses
-        ply_thicknesses, ply_fields, web_plies_data = get_ply_thicknesses(
-            airfoil, te, web_data
-        )
-        if not ply_thicknesses:
+        airfoil_thicknesses, web_thicknesses = get_ply_thicknesses(airfoil, web_data)
+        if not airfoil_thicknesses:
             logger.warning(
                 f"No ply thicknesses found for section {section_id}, skipping"
             )
@@ -182,7 +211,7 @@ def process_single_section(args):
 
         # Define skins and webs
         skins, web_definition = define_skins_and_webs(
-            ply_thicknesses, web_data, web_plies_data
+            airfoil_thicknesses, web_data, web_thicknesses
         )
 
         # Log thicknesses
@@ -201,7 +230,6 @@ def process_single_section(args):
 
         # Run the meshing
         mesh_result = generate_mesh(mesh)
-        logger.info(f"Cross-sectional areas: {mesh_result.areas}")
 
         # Save VTK
         if mesh.vtk:
