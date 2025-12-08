@@ -1,12 +1,10 @@
 """Meshing functionality for b3_2d using cgfoil."""
 
 import os
-import sys
 import multiprocessing
 import re
 import logging
 import pickle
-import math
 import numpy as np
 import pyvista as pv
 from rich.progress import Progress
@@ -67,16 +65,18 @@ def validate_points(points_2d):
 def extract_airfoil_and_web_points(section_mesh):
     """Extract airfoil and web points from section mesh."""
     min_panel_id = section_mesh.cell_data["panel_id"].min()
-    airfoil = pv.merge([
-        section_mesh.threshold(
-            value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
-        ),
-        sort_points_by_y(
+    airfoil = pv.merge(
+        [
             section_mesh.threshold(
-                value=(min_panel_id, min_panel_id), scalars="panel_id"
-            )
-        ),
-    ])
+                value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
+            ),
+            sort_points_by_y(
+                section_mesh.threshold(
+                    value=(min_panel_id, min_panel_id), scalars="panel_id"
+                )
+            ),
+        ]
+    )
     points_2d = airfoil.points[:, :2].tolist()
 
     web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
@@ -124,7 +124,10 @@ def define_skins_and_webs(airfoil_thicknesses, web_data, web_thicknesses):
         material_id += 1
 
     web_definition = {}
-    web_meshes = [("web1", web_thicknesses[0], web_data[0][0]), ("web2", web_thicknesses[1], web_data[1][0])]
+    web_meshes = [
+        ("web1", web_thicknesses[0], web_data[0][0]),
+        ("web2", web_thicknesses[1], web_data[1][0]),
+    ]
     for web_name, thicknesses, points in web_meshes:
         plies = [
             Ply(
@@ -271,5 +274,8 @@ def process_vtp_multi_section(
     with Progress() as progress:
         spinner = progress.add_task("Processing sections...", total=None)
         with multiprocessing.Pool(processes=num_processes) as pool:
-            pool.starmap(process_single_section, [(section_id, vtp_file, output_base_dir) for section_id in unique_ids])
+            pool.starmap(
+                process_single_section,
+                [(section_id, vtp_file, output_base_dir) for section_id in unique_ids],
+            )
         progress.update(spinner, completed=True)
