@@ -23,10 +23,11 @@ dependencies = [
 tests = [
     "pytest",
     "pytest-cov",
+    "ruff",
 ]
 
 [project.scripts]
-b3-2d = "b3_2d.cli:main"
+b3-2d = "b3_2d.cli.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/b3_2d"]

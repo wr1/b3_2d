@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   test:
@@ -20,11 +20,8 @@ jobs:
     - name: Install uv
       run: pip install uv
 
-    - name: Install ruff
-      run: uv pip install ruff
-
     - name: Install dependencies
-      run: uv pip install -e .[dev]
+      run: uv pip install -e .[tests]
 
     - name: Check formatting with ruff
       run: uv run ruff format --check
