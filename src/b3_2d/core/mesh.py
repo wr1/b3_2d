@@ -67,18 +67,16 @@ def validate_points(points_2d):
 def extract_airfoil_and_web_points(section_mesh):
     """Extract airfoil and web points from section mesh."""
     min_panel_id = section_mesh.cell_data["panel_id"].min()
-    airfoil = pv.merge(
-        [
+    airfoil = pv.merge([
+        section_mesh.threshold(
+            value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
+        ),
+        sort_points_by_y(
             section_mesh.threshold(
-                value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
-            ),
-            sort_points_by_y(
-                section_mesh.threshold(
-                    value=(min_panel_id, min_panel_id), scalars="panel_id"
-                )
-            ),
-        ]
-    )
+                value=(min_panel_id, min_panel_id), scalars="panel_id"
+            )
+        ),
+    ])
     points_2d = airfoil.points[:, :2].tolist()
 
     web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
@@ -126,10 +124,7 @@ def define_skins_and_webs(airfoil_thicknesses, web_data, web_thicknesses):
         material_id += 1
 
     web_definition = {}
-    web_meshes = [
-        ("web1", web_thicknesses[0], web_data[0][0]),
-        ("web2", web_thicknesses[1], web_data[1][0]),
-    ]
+    web_meshes = [("web1", web_thicknesses[0], web_data[0][0]), ("web2", web_thicknesses[1], web_data[1][0])]
     for web_name, thicknesses, points in web_meshes:
         plies = [
             Ply(
@@ -165,9 +160,8 @@ def log_thicknesses(skins, web_definition):
                 )
 
 
-def process_single_section(args):
+def process_single_section(section_id, vtp_file, output_base_dir):
     """Process a single section_id."""
-    section_id, vtp_file, output_base_dir = args
     section_dir = os.path.join(output_base_dir, f"section_{section_id}")
     os.makedirs(section_dir, exist_ok=True)
 
@@ -270,9 +264,12 @@ def process_vtp_multi_section(
     total_sections = len(unique_ids)
     logger.info(f"Found {total_sections} unique section_ids: {np.array(unique_ids)}")
 
-    # Process sections with progress bar
+    if num_processes is None:
+        num_processes = multiprocessing.cpu_count()
+
+    # Process sections in parallel with a wait graphic
     with Progress() as progress:
-        task = progress.add_task("Generating 2D meshes", total=total_sections)
-        for section_id in unique_ids:
-            process_single_section((section_id, vtp_file, output_base_dir))
-            progress.update(task, advance=1)
+        spinner = progress.add_task("Processing sections...", total=None)
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            pool.starmap(process_single_section, [(section_id, vtp_file, output_base_dir) for section_id in unique_ids])
+        progress.update(spinner, completed=True)
