@@ -153,7 +153,8 @@ def process_single_section(args):
     try:
         logger.info(f"Starting processing section_id: {section_id}")
         # Load VTP file in each process to avoid serialization issues
-        mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
+        # mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
+        mesh_vtp = pv.read(vtp_file).rotate_z(-90).rotate_x(180)
 
         # Filter mesh for this section_id
         section_mesh = mesh_vtp.threshold(
