@@ -21,7 +21,7 @@ jobs:
       run: pip install uv
 
     - name: Install dependencies
-      run: uv pip install -e .[tests]
+      run: uv pip install -e .
 
     - name: Check formatting with ruff
       run: uv run ruff format --check
