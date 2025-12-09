@@ -1,6 +1,5 @@
 """Tests for plotting functionality."""
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 
@@ -13,6 +12,7 @@ def test_plot_mesh():
         mock_mesh.cell_data = {"test_scalar": []}
 
         from b3_2d.core.plotting import plot_mesh
+
         plot_mesh(mock_mesh, scalar="test_scalar", output_file="test.png")
 
         mock_plotter_class.assert_called_once()
