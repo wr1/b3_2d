@@ -1,5 +1,0 @@
-"""Statesman steps for b3_2d."""
-
-from ..state import B32dStep, B32dAnbaStep
-
-__all__ = ["B32dStep", "B32dAnbaStep"]
