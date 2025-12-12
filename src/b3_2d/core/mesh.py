@@ -15,8 +15,6 @@ from cgfoil.utils.io import save_mesh_to_vtk
 
 logger = logging.getLogger(__name__)
 
-# Rotation angle around z-axis
-ROTATION_ANGLE = 90
 
 
 def sort_points_by_y(mesh: pv.PolyData) -> pv.PolyData:
@@ -65,19 +63,22 @@ def validate_points(points_2d):
 def extract_airfoil_and_web_points(section_mesh):
     """Extract airfoil and web points from section mesh."""
     min_panel_id = section_mesh.cell_data["panel_id"].min()
+
     airfoil = pv.merge(
         [
             section_mesh.threshold(
                 value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
             ),
-            sort_points_by_y(
-                section_mesh.threshold(
-                    value=(min_panel_id, min_panel_id), scalars="panel_id"
-                )
-            ),
+            # sort_points_by_y(
+            #     section_mesh.threshold(
+            #         value=(min_panel_id, min_panel_id), scalars="panel_id"
+            #     )
+            # ),
         ]
     )
     points_2d = airfoil.points[:, :2].tolist()
+    logger.info(f"Extracted {points_2d[:1]} airfoil points")
+    # points_2d.extend(points_2d[:1])
 
     web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
     web2 = section_mesh.threshold(value=(-2, -2), scalars="panel_id")
@@ -257,7 +258,7 @@ def process_vtp_multi_section(
     vtp_file: str, output_base_dir: str, num_processes: int = None
 ):
     """Process VTP file for all unique section_ids, outputting to subdirectories, using multiprocessing."""
-    mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
+    mesh_vtp = pv.read(vtp_file)
 
     # Get unique section_ids
     if "section_id" not in mesh_vtp.cell_data:
