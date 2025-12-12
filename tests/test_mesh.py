@@ -9,8 +9,8 @@ except ImportError:
     process_vtp_multi_section = None
 
 
-@patch("b3_2d.core.mesh.pv.read")
-@patch("b3_2d.core.mesh.multiprocessing.Pool")
+@patch("pyvista.read")
+@patch("multiprocessing.Pool")
 def test_process_vtp_multi_section(mock_pool, mock_pv_read):
     """Test process_vtp_multi_section with mocked dependencies."""
     if process_vtp_multi_section is None:
@@ -22,8 +22,7 @@ def test_process_vtp_multi_section(mock_pool, mock_pv_read):
     mock_pv_read.return_value = mock_mesh
 
     # Mock pool
-    mock_pool_instance = MagicMock()
-    mock_pool.return_value.__enter__.return_value = mock_pool_instance
+    mock_pool_instance = mock_pool.return_value
 
     # Call the function
     process_vtp_multi_section("dummy.vtp", "/tmp/output", num_processes=1)
@@ -31,6 +30,6 @@ def test_process_vtp_multi_section(mock_pool, mock_pv_read):
     # Assertions
     mock_pv_read.assert_called_with("dummy.vtp")
     mock_pool.assert_called_with(processes=1)
-    mock_pool_instance.map.assert_called_once()
-    args_list = mock_pool_instance.map.call_args[0][1]
+    mock_pool_instance.starmap.assert_called_once()
+    args_list = mock_pool_instance.starmap.call_args[0][1]
     assert len(args_list) == 2  # Two unique section_ids

@@ -42,6 +42,61 @@ def plot_command(
     plot_mesh(mesh, scalar=scalar, output_file=output_file)
 
 
+def anba_command(
+    output_dir: str,
+    anba_env: str = "anba4-env",
+    verbose: bool = False,
+) -> None:
+    """Run ANBA4 on anba.json files in output_dir."""
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    output_path = Path(output_dir)
+    anba_files = list(output_path.glob("section_*/anba.json"))
+    if not anba_files:
+        print("No anba.json files found")
+        return
+    conda_path = os.environ.get("CONDA_EXE") or shutil.which("conda")
+    if not conda_path:
+        print("Conda not found")
+        return
+    result = subprocess.run([conda_path, "env", "list"], capture_output=True, text=True)
+    if anba_env not in result.stdout:
+        print(f"Conda env {anba_env} not found")
+        return
+    for anba_file in anba_files:
+        conda_command = [
+            conda_path,
+            "run",
+            "-n",
+            anba_env,
+            "anba4-run",
+            "-i",
+            str(anba_file),
+        ]
+        env_vars = {
+            **os.environ.copy(),
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "CUDA_VISIBLE_DEVICES": "-1",
+        }
+        result = subprocess.run(
+            conda_command,
+            capture_output=True,
+            text=True,
+            env=env_vars,
+        )
+        if result.returncode != 0:
+            print(f"ANBA4 failed for {anba_file}: {result.stderr}")
+        else:
+            print(f"ANBA4 completed for {anba_file}")
+
+
 mesh_cmd = command(
     name="mesh",
     help="Process VTP file for multi-section meshing.",
@@ -105,10 +160,36 @@ plot_cmd = command(
     ],
 )
 
+anba_cmd = command(
+    name="anba",
+    help="Run ANBA4 on section anba.json files.",
+    callback=anba_command,
+    options=[
+        option(
+            flags=["--output-dir", "-o"],
+            arg_type=str,
+            required=True,
+            help="Output directory containing section_*/anba.json",
+        ),
+        option(
+            flags=["--anba-env", "-e"],
+            arg_type=str,
+            default="anba4-env",
+            help="Conda environment for ANBA4",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
 app = cli(
     name="b3_2d",
     help="2D meshing for b3m using cgfoil.",
-    commands=[mesh_cmd, plot_cmd],
+    commands=[mesh_cmd, plot_cmd, anba_cmd],
     show_types=True,
     show_defaults=True,
     line_connect=True,
