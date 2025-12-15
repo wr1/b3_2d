@@ -4,7 +4,6 @@ import subprocess
 from pathlib import Path
 from statesman import Statesman
 from statesman.core.base import ManagedFile
-import logging
 
 
 class B32dAnbaStep(Statesman):

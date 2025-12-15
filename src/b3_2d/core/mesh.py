@@ -67,9 +67,7 @@ def extract_airfoil_and_web_points(section_mesh):
         value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
     )
     te = sort_points_by_y(
-        section_mesh.threshold(
-            value=(min_panel_id, min_panel_id), scalars="panel_id"
-        )
+        section_mesh.threshold(value=(min_panel_id, min_panel_id), scalars="panel_id")
     )
 
     # Compute bounding box sizes
