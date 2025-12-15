@@ -42,5 +42,5 @@ def test_plot_anba_results():
 
         plot_anba_results(mock_mesh, mock_data, "test.png")
 
-        mock_plt.subplots.assert_called_once_with(figsize=(12.8, 9.6))
+        mock_plt.subplots.assert_called_once_with(figsize=(12.8, 6.6))
         # Further assertions can be added if needed
