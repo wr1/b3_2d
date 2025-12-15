@@ -41,7 +41,7 @@ def plot_anba_results(
     principal_angle_deg = np.degrees(principal_angle)
 
     # Plot mesh
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12.8, 6.6))
     x = mesh.points[:, 0]
     y = mesh.points[:, 1]
     triangles = mesh.cells.reshape(-1, 4)[:, 1:4]  # Assuming triangular cells
@@ -51,22 +51,48 @@ def plot_anba_results(
     else:
         ax.triplot(x, y, triangles, color="black", linewidth=0.5)
 
+    # Markers
+    markers = ["ro", "bs", "g^"]
+    marker_iter = iter(markers)
+
     # Add centers
     for name, point in centers.items():
-        ax.plot(point[0], point[1], "ro", markersize=10, label=name.replace("_", " ").title())
-        ax.text(point[0] + 0.01, point[1] + 0.01, name.replace("_", " ").title(), fontsize=12)
+        marker = next(marker_iter)
+        ax.plot(
+            point[0],
+            point[1],
+            marker,
+            markersize=10,
+            label=name.replace("_", " ").title(),
+        )
 
-    # Add principal angle line
+    # Add principal angle line extended to bounding box
     if "elastic_center" in centers:
         ec = centers["elastic_center"]
-        length = 0.1  # Arbitrary length
+        bounds = mesh.bounds
+        x_min, x_max = bounds[0], bounds[1]
+        y_min, y_max = bounds[2], bounds[3]
+        # Extend line to cover the box
+        length = max(x_max - x_min, y_max - y_min) * 0.4  # Reduced length
         dx = length * np.cos(principal_angle)
         dy = length * np.sin(principal_angle)
-        ax.plot([ec[0] - dx, ec[0] + dx], [ec[1] - dy, ec[1] + dy], "b-", label="Principal Angle")
-        ax.text(ec[0] + 0.02, ec[1] + 0.02, f"Principal Angle: {principal_angle_deg:.2f}°", fontsize=12)
+        ax.plot(
+            [ec[0] - dx, ec[0] + dx],
+            [ec[1] - dy, ec[1] + dy],
+            "b-",
+            label="Principal Angle",
+        )
+        ax.text(
+            ec[0] + 0.02,
+            ec[1] + 0.02,
+            f"Principal Angle: {principal_angle_deg:.2f}°",
+            fontsize=12,
+        )
 
     ax.legend()
     ax.set_aspect("equal")
-    plt.savefig(output_file)
+    ax.grid(True)
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=400)
     plt.close()
     logger.info(f"ANBA plot saved to {output_file}")
