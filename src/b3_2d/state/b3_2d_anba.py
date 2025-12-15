@@ -52,6 +52,7 @@ class B32dAnbaStep(Statesman):
             "OMP_NUM_THREADS": "1",
             "CUDA_VISIBLE_DEVICES": "-1",
         }
+        # self.logger.info(conda_command)
         result = subprocess.run(
             conda_command,
             capture_output=True,
@@ -70,5 +71,5 @@ class B32dAnbaStep(Statesman):
                 f"ANBA4 completed successfully, outputs in {anba_results_dir}"
             )
         else:
-            self.logger.info("ANBA4 failed")
+            self.logger.info("ANBA4 completed with errors")
         self.logger.info("ANBA4 processing completed")
