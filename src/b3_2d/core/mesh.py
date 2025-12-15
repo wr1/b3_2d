@@ -16,7 +16,6 @@ from cgfoil.utils.io import save_mesh_to_vtk
 logger = logging.getLogger(__name__)
 
 
-
 def sort_points_by_y(mesh: pv.PolyData) -> pv.PolyData:
     """
     For a triangular PolyData mesh:
@@ -64,18 +63,29 @@ def extract_airfoil_and_web_points(section_mesh):
     """Extract airfoil and web points from section mesh."""
     min_panel_id = section_mesh.cell_data["panel_id"].min()
 
-    airfoil = pv.merge(
-        [
-            section_mesh.threshold(
-                value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
-            ),
-            # sort_points_by_y(
-            #     section_mesh.threshold(
-            #         value=(min_panel_id, min_panel_id), scalars="panel_id"
-            #     )
-            # ),
-        ]
+    section = section_mesh.threshold(
+        value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
     )
+    te = sort_points_by_y(
+        section_mesh.threshold(
+            value=(min_panel_id, min_panel_id), scalars="panel_id"
+        )
+    )
+
+    # Compute bounding box sizes
+    def bb_size(mesh):
+        bounds = mesh.bounds
+        return ((bounds[1] - bounds[0]) ** 2 + (bounds[3] - bounds[2]) ** 2) ** 0.5
+
+    section_bb = bb_size(section)
+    te_bb = bb_size(te)
+
+    # If te bounding box is bigger than 5% of section's, include it
+    if te_bb > 0.05 * section_bb:
+        airfoil = pv.merge([section, te])
+    else:
+        airfoil = pv.merge([section])
+
     points_2d = airfoil.points[:, :2].tolist()
     logger.info(f"Extracted {points_2d[:1]} airfoil points")
     # points_2d.extend(points_2d[:1])

@@ -22,6 +22,7 @@ class B32dAnbaStep(Statesman):
         """Run ANBA4 for a single anba_file."""
         section_dir = anba_file.parent
         output_file = section_dir / "anba_solve.json"
+        log_file = section_dir / "anba_solve.log"
         conda_command = [
             conda_path,
             "run",
@@ -47,6 +48,11 @@ class B32dAnbaStep(Statesman):
             env=env_vars,
         )
         success = result.returncode == 0
+        with open(log_file, "w") as log:
+            log.write(f"--- ANBA4 run for {anba_file} ---\n")
+            log.write(result.stdout)
+            if result.stderr:
+                log.write(result.stderr)
         if success:
             self.logger.info(f"ANBA4 output written to {output_file}")
             # Move output files
@@ -55,7 +61,7 @@ class B32dAnbaStep(Statesman):
                     shutil.move(str(f), str(anba_results_dir / f.name))
             for f in section_dir.glob("*.vtp"):
                 shutil.move(str(f), str(anba_results_dir / f.name))
-        return str(anba_file), success, result.stdout, result.stderr
+        return str(anba_file), success
 
     def _execute(self):
         """Execute the step."""
@@ -82,21 +88,15 @@ class B32dAnbaStep(Statesman):
             return
         anba_results_dir = workdir / "anba4_results"
         anba_results_dir.mkdir(exist_ok=True)
-        log_file = workdir / "anba_solve.log"
-        with open(log_file, "w") as log:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                futures = [
-                    executor.submit(self.run_anba_for_file, anba_file, anba_env, conda_path, anba_results_dir)
-                    for anba_file in anba_files
-                ]
-                for future in concurrent.futures.as_completed(futures):
-                    anba_file_str, success, stdout, stderr = future.result()
-                    log.write(f"\n--- ANBA4 run for {anba_file_str} ---\n")
-                    log.write(stdout)
-                    if stderr:
-                        log.write(stderr)
-                    if success:
-                        self.logger.info(f"ANBA4 completed for {anba_file_str}")
-                    else:
-                        self.logger.error(f"ANBA4 failed for {anba_file_str}")
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(self.run_anba_for_file, anba_file, anba_env, conda_path, anba_results_dir)
+                for anba_file in anba_files
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                anba_file_str, success = future.result()
+                if success:
+                    self.logger.info(f"ANBA4 completed for {anba_file_str}")
+                else:
+                    self.logger.error(f"ANBA4 failed for {anba_file_str}")
         self.logger.info("ANBA4 processing completed")
