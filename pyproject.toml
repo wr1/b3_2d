@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "pyvista",
-    "cgfoil",# @ git+https://github.com/wr1/cgfoil.git",
+    "cgfoil @ git+https://github.com/wr1/cgfoil.git",
     "pydantic",
     "treeparse",
     "rich",
