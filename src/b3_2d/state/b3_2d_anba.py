@@ -42,16 +42,9 @@ class B32dAnbaStep(Statesman):
             return
         anba_results_dir = workdir / "anba4_results"
         anba_results_dir.mkdir(exist_ok=True)
-        conda_command = [
-            conda_path,
-            "run",
-            "-n",
-            anba_env,
-            "anba4-run",
-        ]
+        conda_command = [conda_path, "run", "-n", anba_env, "anba4-run", "-i"]
         for anba_file in anba_files:
-            conda_command.extend(["-i", str(anba_file)])
-        conda_command.extend(["-o", str(anba_results_dir)])
+            conda_command.extend([str(anba_file)])
         env_vars = {
             **os.environ.copy(),
             "OPENBLAS_NUM_THREADS": "1",
@@ -77,5 +70,5 @@ class B32dAnbaStep(Statesman):
                 f"ANBA4 completed successfully, outputs in {anba_results_dir}"
             )
         else:
-            self.logger.error("ANBA4 failed")
+            self.logger.info("ANBA4 failed")
         self.logger.info("ANBA4 processing completed")
