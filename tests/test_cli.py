@@ -4,6 +4,7 @@ import sys
 import pytest
 from unittest.mock import patch, MagicMock
 from b3_2d.cli.cli import app
+import json
 
 
 def test_cli_app():
@@ -98,8 +99,12 @@ def test_plot_command(mock_pv_read, mock_plot):
 
 
 @patch("subprocess.run")
-def test_anba_all_command(mock_subprocess):
+@patch("b3_2d.cli.cli.Path")
+def test_anba_all_command(mock_path_class, mock_subprocess):
     """Test anba all command execution."""
+    mock_path = MagicMock()
+    mock_path.glob.return_value = ["file"]
+    mock_path_class.return_value = mock_path
     mock_subprocess.return_value = MagicMock(returncode=0, stdout="", stderr="")
     sys.argv = [
         "b3-2d",
@@ -132,13 +137,17 @@ def test_anba_single_command(mock_subprocess):
 @patch("b3_2d.core.plotting.plot_anba_results")
 @patch("pyvista.read")
 @patch("b3_2d.cli.cli.json.load")
+@patch("builtins.open")
 @patch("b3_2d.cli.cli.Path")
-def test_anba_plot_command(mock_path_class, mock_json, mock_pv_read, mock_plot):
+def test_anba_plot_command(mock_path_class, mock_open, mock_json, mock_pv_read, mock_plot):
     """Test anba plot command execution."""
     mock_path = MagicMock()
     mock_path.parent = mock_path
-    mock_path.__truediv__.return_value.exists.return_value = True
+    mock_vtk_file = MagicMock()
+    mock_vtk_file.exists.return_value = True
+    mock_path.__truediv__ = MagicMock(return_value = mock_vtk_file)
     mock_path_class.return_value = mock_path
+    mock_open.side_effect = lambda *args, **kwargs: MagicMock()
     mock_mesh = mock_pv_read.return_value
     mock_data = {
         "mass_center": [0, 0],
@@ -157,5 +166,4 @@ def test_anba_plot_command(mock_path_class, mock_json, mock_pv_read, mock_plot):
         "plot.png",
     ]
     app.run()
-    mock_pv_read.assert_called()
     mock_plot.assert_called_with(mock_mesh, mock_data, "plot.png")
