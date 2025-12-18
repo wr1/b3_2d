@@ -40,3 +40,7 @@ source = ["src/b3_2d"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src/b3_2d --cov-report=term-missing"
+
+
+[tool.uv.sources]
+cgfoil = { workspace = true }
