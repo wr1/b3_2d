@@ -2,15 +2,19 @@
 
 import logging
 from rich.logging import RichHandler
-from treeparse import cli, command, option
+from treeparse import cli, command, option, group
 
 import pyvista as pv
+import json
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
     handlers=[RichHandler(show_time=False)],
 )
+
+logger = logging.getLogger(__name__)
 
 
 def mesh_command(
@@ -40,6 +44,116 @@ def plot_command(
         logging.getLogger().setLevel(logging.DEBUG)
     mesh = pv.read(mesh_file)
     plot_mesh(mesh, scalar=scalar, output_file=output_file)
+
+
+def anba_all_command(
+    output_dir: str,
+    anba_env: str = "anba4-env",
+    verbose: bool = False,
+) -> None:
+    """Run ANBA4 on all anba.json files in output_dir."""
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    output_path = Path(output_dir)
+    anba_files = list(output_path.glob("section_*/anba.json"))
+    if not anba_files:
+        logger.warning("No anba.json files found")
+        return
+    conda_path = os.environ.get("CONDA_EXE") or shutil.which("conda")
+    if not conda_path:
+        logger.error("Conda not found")
+        return
+    result = subprocess.run([conda_path, "env", "list"], capture_output=True, text=True)
+    if anba_env not in result.stdout:
+        logger.error(f"Conda env {anba_env} not found")
+        return
+    conda_command = [conda_path, "run", "-n", anba_env, "anba4-run", "-i"]
+    for anba_file in anba_files:
+        conda_command.append(str(anba_file))
+    env_vars = {
+        **os.environ.copy(),
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "-1",
+    }
+    result = subprocess.run(
+        conda_command,
+        capture_output=True,
+        text=True,
+        env=env_vars,
+    )
+    if result.returncode != 0:
+        logger.error(f"ANBA4 failed: {result.stderr}")
+    else:
+        logger.info(f"ANBA4 completed for all sections")
+
+
+def anba_single_command(
+    json_file: str,
+    anba_env: str = "anba4-env",
+    verbose: bool = False,
+) -> None:
+    """Run ANBA4 on a single anba.json file."""
+    import os
+    import shutil
+    import subprocess
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    conda_path = os.environ.get("CONDA_EXE") or shutil.which("conda")
+    if not conda_path:
+        logger.error("Conda not found")
+        return
+    result = subprocess.run([conda_path, "env", "list"], capture_output=True, text=True)
+    if anba_env not in result.stdout:
+        logger.error(f"Conda env {anba_env} not found")
+        return
+    conda_command = [conda_path, "run", "-n", anba_env, "anba4-run", "-i", json_file]
+    env_vars = {
+        **os.environ.copy(),
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "-1",
+    }
+    result = subprocess.run(
+        conda_command,
+        capture_output=True,
+        text=True,
+        env=env_vars,
+    )
+    if result.stdout:
+        logger.info(result.stdout.strip())
+    if result.returncode != 0:
+        logger.error(f"ANBA4 failed for {json_file}: {result.stderr}")
+    else:
+        logger.info(f"ANBA4 completed for {json_file}")
+
+
+def anba_plot_command(
+    json_file: str,
+    output_file: str,
+    verbose: bool = False,
+) -> None:
+    """Plot ANBA4 results for a single section."""
+    from ..core.plotting import plot_anba_results
+
+    json_path = Path(json_file)
+    section_dir = json_path.parent
+    vtk_file = section_dir / "output.vtk"
+    if not vtk_file.exists():
+        logger.error(f"VTK file not found: {vtk_file}")
+        return
+    mesh = pv.read(str(vtk_file))
+    with open(json_file, "r") as f:
+        data = json.load(f)
+    plot_anba_results(mesh, data, output_file)
 
 
 mesh_cmd = command(
@@ -105,10 +219,95 @@ plot_cmd = command(
     ],
 )
 
+anba_all_cmd = command(
+    name="all",
+    help="Run ANBA4 on all section anba.json files.",
+    callback=anba_all_command,
+    options=[
+        option(
+            flags=["--output-dir", "-o"],
+            arg_type=str,
+            required=True,
+            help="Output directory containing section_*/anba.json",
+        ),
+        option(
+            flags=["--anba-env", "-e"],
+            arg_type=str,
+            default="anba4-env",
+            help="Conda environment for ANBA4",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
+anba_single_cmd = command(
+    name="single",
+    help="Run ANBA4 on a single anba.json file.",
+    callback=anba_single_command,
+    options=[
+        option(
+            flags=["--json-file", "-j"],
+            arg_type=str,
+            required=True,
+            help="Input anba.json file",
+        ),
+        option(
+            flags=["--anba-env", "-e"],
+            arg_type=str,
+            default="anba4-env",
+            help="Conda environment for ANBA4",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
+anba_plot_cmd = command(
+    name="plot",
+    help="Plot ANBA4 results for a section.",
+    callback=anba_plot_command,
+    options=[
+        option(
+            flags=["--json-file", "-j"],
+            arg_type=str,
+            required=True,
+            help="Input anba_out.json file with results",
+        ),
+        option(
+            flags=["--output-file", "-o"],
+            arg_type=str,
+            required=True,
+            help="Output plot file",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
+anba_group = group(
+    name="anba",
+    help="Run ANBA4 on meshes.",
+    commands=[anba_all_cmd, anba_single_cmd, anba_plot_cmd],
+)
+
 app = cli(
     name="b3_2d",
     help="2D meshing for b3m using cgfoil.",
     commands=[mesh_cmd, plot_cmd],
+    subgroups=[anba_group],
     show_types=True,
     show_defaults=True,
     line_connect=True,

@@ -1,1 +1,1 @@
-"""Test suite for b3_2d."""
+"""Tests for b3_2d."""
