@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from statesman import Statesman
 from statesman.core.base import ManagedFile
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 
 class B32dAnbaStep(Statesman):
@@ -51,12 +52,15 @@ class B32dAnbaStep(Statesman):
             "OMP_NUM_THREADS": "1",
             "CUDA_VISIBLE_DEVICES": "-1",
         }
-        result = subprocess.run(
-            conda_command,
-            capture_output=True,
-            text=True,
-            env=env_vars,
-        )
+        with Progress(SpinnerColumn(), TextColumn("Running ANBA4 on all sections...")) as progress:
+            task = progress.add_task("", total=None)
+            result = subprocess.run(
+                conda_command,
+                capture_output=True,
+                text=True,
+                env=env_vars,
+            )
+            progress.update(task, completed=True)
         success = result.returncode == 0
         log_file = anba_results_dir / "anba_solve.log"
         with open(log_file, "w") as log:
@@ -68,8 +72,6 @@ class B32dAnbaStep(Statesman):
             self.logger.info(
                 f"ANBA4 completed successfully, outputs in {anba_results_dir}"
             )
-            self.logger.info(f"ANBA log saved to {log_file}")
         else:
             self.logger.info("ANBA4 completed with errors")
-            self.logger.info(f"ANBA log saved to {log_file}")
         self.logger.info("ANBA4 processing completed")
