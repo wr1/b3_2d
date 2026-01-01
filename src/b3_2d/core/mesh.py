@@ -91,50 +91,73 @@ def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
     return points_2d, web_data, airfoil
 
 
-def get_thickness_arrays(mesh: pv.PolyData) -> dict:
-    """Get thickness arrays from mesh."""
-    mesh_point = mesh.cell_data_to_point_data()
+def get_thickness_and_material_arrays(mesh: pv.PolyData) -> tuple:
+    """Get thickness and material arrays from mesh."""
+    mesh_point = mesh.cell_data_to_point_data(pass_cell_data=True)
     thickness_keys = [
         k for k in mesh_point.point_data.keys() if re.match(r"ply_.*_thickness", k)
     ]
     thickness_keys.sort(key=lambda x: int(re.search(r"ply_(\d+)", x).group(1)))
-    return {k: mesh_point.point_data[k] for k in thickness_keys}
+    material_keys = [k.replace("_thickness", "_material") for k in thickness_keys]
+    logger.info(f"Thickness keys: {thickness_keys}")
+    logger.info(f"Material keys: {material_keys}")
+    logger.info(f"Available point data keys: {list(mesh_point.point_data.keys())}")
+    thicknesses = {k: mesh_point.point_data[k] for k in thickness_keys}
+    materials = {k: mesh_point.cell_data[k] for k in material_keys}
+    return thicknesses, materials
 
 
-def get_ply_thicknesses(airfoil: pv.PolyData, web_data: list) -> tuple:
-    """Get ply thicknesses from airfoil and web data."""
-    airfoil_thicknesses = get_thickness_arrays(airfoil)
-    web_thicknesses = [get_thickness_arrays(web_mesh) for _, web_mesh in web_data]
-    return airfoil_thicknesses, web_thicknesses
+def get_ply_thicknesses_and_materials(airfoil: pv.PolyData, web_data: list) -> tuple:
+    """Get ply thicknesses and materials from airfoil and web data."""
+    airfoil_thicknesses, airfoil_materials = get_thickness_and_material_arrays(airfoil)
+    web_thicknesses_and_materials = [
+        get_thickness_and_material_arrays(web_mesh) for _, web_mesh in web_data
+    ]
+    web_thicknesses = [t for t, _ in web_thicknesses_and_materials]
+    web_materials = [m for _, m in web_thicknesses_and_materials]
+    return airfoil_thicknesses, airfoil_materials, web_thicknesses, web_materials
 
 
 def define_skins_and_webs(
-    airfoil_thicknesses: dict, web_data: list, web_thicknesses: list
+    airfoil_thicknesses: dict,
+    airfoil_materials: dict,
+    web_data: list,
+    web_thicknesses: list,
+    web_materials: list,
 ) -> tuple:
-    """Define skins and webs from thicknesses and points."""
+    """Define skins and webs from thicknesses, materials, and points."""
     skins = {}
-    material_id = 1
-    for i, (key, thickness_array) in enumerate(airfoil_thicknesses.items(), start=1):
+    for i, key in enumerate(airfoil_thicknesses.keys(), start=1):
+        mat_key = key.replace("_thickness", "_material")
+        mat_array = airfoil_materials[mat_key]
+        unique_mats = np.max(mat_array)
+        material = int(unique_mats)
+        logger.info(
+            f"For skin {i}, thickness key: {key}, material key: {mat_key}, material: {material}"
+        )
         skins[f"skin{i}"] = Skin(
-            thickness=Thickness(type="array", array=list(thickness_array)),
-            material=material_id,
+            thickness=Thickness(type="array", array=list(airfoil_thicknesses[key])),
+            material=material,
             sort_index=i,
         )
-        material_id += 1
     web_definition = {}
     web_meshes = [
-        ("web1", web_thicknesses[0], web_data[0][0]),
-        ("web2", web_thicknesses[1], web_data[1][0]),
+        ("web1", web_thicknesses[0], web_materials[0], web_data[0][0]),
+        ("web2", web_thicknesses[1], web_materials[1], web_data[1][0]),
     ]
-    for web_name, thicknesses, points in web_meshes:
-        plies = [
-            Ply(
-                thickness=Thickness(type="array", array=list(thicknesses[key])),
-                material=material_id + j,
+    for web_name, thicknesses, materials, points in web_meshes:
+        plies = []
+        for key in thicknesses:
+            mat_key = key.replace("_thickness", "_material")
+            mat_array = materials[mat_key]
+            unique_mats = np.unique(mat_array)
+            material = int(unique_mats[-1])
+            plies.append(
+                Ply(
+                    thickness=Thickness(type="array", array=list(thicknesses[key])),
+                    material=material,
+                )
             )
-            for j, key in enumerate(thicknesses)
-        ]
-        material_id += len(thicknesses)
         normal_ref = [1, 0] if web_name == "web1" else [-1, 0]
         web_definition[web_name] = Web(
             coord_input=points, plies=plies, normal_ref=normal_ref
@@ -157,12 +180,12 @@ def log_thicknesses(skins: dict, web_definition: dict) -> None:
             thickness = ply.thickness.array
             if thickness:
                 logger.info(
-                    f"Web {web_name} ply {i} (mat {ply.material}): min {min(thickness):.3f}, max {max(thickness):.3f}"
+                    f"Web {web_name} ply {i}: min {min(thickness):.3f}, max {max(thickness):.3f}"
                 )
 
 
 def process_single_section(
-    section_id: int, vtp_file: str, output_base_dir: str, debug: bool = False
+    section_id: int, vtp_file: str, output_base_dir: str, matdb: dict = None, debug: bool = False
 ) -> None:
     """Process a single section."""
     section_dir = os.path.join(output_base_dir, f"section_{section_id}")
@@ -186,12 +209,18 @@ def process_single_section(
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
             logger.warning(f"Invalid points for section {section_id}, skipping")
             return
-        airfoil_thicknesses, web_thicknesses = get_ply_thicknesses(airfoil, web_data)
+        airfoil_thicknesses, airfoil_materials, web_thicknesses, web_materials = (
+            get_ply_thicknesses_and_materials(airfoil, web_data)
+        )
         if not airfoil_thicknesses:
             logger.warning(f"No thicknesses for section {section_id}, skipping")
             return
         skins, web_definition = define_skins_and_webs(
-            airfoil_thicknesses, web_data, web_thicknesses
+            airfoil_thicknesses,
+            airfoil_materials,
+            web_data,
+            web_thicknesses,
+            web_materials,
         )
         log_thicknesses(skins, web_definition)
         vtk_output_file = os.path.join(section_dir, "output.vtk")
@@ -212,7 +241,7 @@ def process_single_section(
             pickle.dump(mesh_result, f)
         logger.info(f"Mesh saved to {mesh_file}")
         anba_file = os.path.join(section_dir, "anba.json")
-        export_mesh_to_anba(mesh_file, anba_file)
+        export_mesh_to_anba(mesh_file, anba_file, matdb=matdb)
         logger.info(f"Exported ANBA JSON to {anba_file}")
         logger.info(f"Completed section {section_id}")
     except Exception as e:
@@ -223,7 +252,7 @@ def process_single_section(
 
 
 def process_vtp_multi_section(
-    vtp_file: str, output_base_dir: str, num_processes: int = None, debug: bool = False
+    vtp_file: str, output_base_dir: str, num_processes: int = None, matdb: dict = None, debug: bool = False
 ) -> None:
     """Process VTP file for all sections using multiprocessing."""
     mesh_vtp = pv.read(vtp_file)
@@ -240,7 +269,7 @@ def process_vtp_multi_section(
             pool.starmap(
                 process_single_section,
                 [
-                    (section_id, vtp_file, output_base_dir, debug)
+                    (section_id, vtp_file, output_base_dir, matdb, debug)
                     for section_id in unique_ids
                 ],
             )
