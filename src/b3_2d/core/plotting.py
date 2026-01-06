@@ -32,7 +32,7 @@ def plot_mesh(
     logger.info(f"Plot saved to {output_file}")
 
 
-def plot_anba_results(
+def plot_section_anba(
     mesh: pv.PolyData,
     data: dict,
     output_file: str = "anba_plot.png",

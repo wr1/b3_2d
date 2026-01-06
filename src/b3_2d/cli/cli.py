@@ -7,6 +7,8 @@ from treeparse import cli, command, option, group
 import pyvista as pv
 import json
 from pathlib import Path
+import numpy as np
+import matplotlib.pyplot as plt
 
 logging.basicConfig(
     level=logging.INFO,
@@ -142,7 +144,7 @@ def anba_plot_command(
     verbose: bool = False,
 ) -> None:
     """Plot ANBA4 results for a single section."""
-    from ..core.plotting import plot_anba_results
+    from ..core.plotting import plot_section_anba
 
     json_path = Path(json_file)
     section_dir = json_path.parent
@@ -153,7 +155,20 @@ def anba_plot_command(
     mesh = pv.read(str(vtk_file))
     with open(json_file, "r") as f:
         data = json.load(f)
-    plot_anba_results(mesh, data, output_file)
+    plot_section_anba(mesh, data, output_file)
+
+
+def span_plot_command(
+    output_dir: str,
+    output_file: str,
+    verbose: bool = False,
+) -> None:
+    """Plot ANBA stiffnesses and masses along blade span."""
+    from ..core.span_plotting import plot_span_anba
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    plot_span_anba(output_dir, output_file)
 
 
 mesh_cmd = command(
@@ -297,6 +312,32 @@ anba_plot_cmd = command(
     ],
 )
 
+span_cmd = command(
+    name="span",
+    help="Plot ANBA stiffnesses and masses along blade span.",
+    callback=span_plot_command,
+    options=[
+        option(
+            flags=["--output-dir", "-o"],
+            arg_type=str,
+            required=True,
+            help="Output directory containing section_*/",
+        ),
+        option(
+            flags=["--output-file", "-f"],
+            arg_type=str,
+            required=True,
+            help="Output plot file",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
 anba_group = group(
     name="anba",
     help="Run ANBA4 on meshes.",
@@ -306,7 +347,7 @@ anba_group = group(
 app = cli(
     name="b3_2d",
     help="2D meshing for b3m using cgfoil.",
-    commands=[mesh_cmd, plot_cmd],
+    commands=[mesh_cmd, plot_cmd, span_cmd],
     subgroups=[anba_group],
     show_types=True,
     show_defaults=True,
