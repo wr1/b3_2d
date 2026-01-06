@@ -36,8 +36,17 @@ def plot_anba_results(
     mesh: pv.PolyData,
     data: dict,
     output_file: str = "anba_plot.png",
+    log_file: Optional[str] = None,
+    lock = None,
 ) -> None:
     """Plot ANBA4 results on the mesh using matplotlib."""
+    required_keys = ["mass_center", "shear_center", "tension_center", "principal_angle"]
+    if not all(k in data for k in required_keys):
+        if log_file and lock:
+            with lock:
+                with open(log_file, "a") as f:
+                    f.write(f"ANBA results not found, skipping plot for {output_file}\n")
+        return
     centers = {
         "mass_center": np.array(data["mass_center"]),
         "shear_center": np.array(data["shear_center"]),
@@ -91,7 +100,10 @@ def plot_anba_results(
     plt.tight_layout()
     plt.savefig(output_file, dpi=400)
     plt.close()
-    logger.info(f"ANBA plot saved to {output_file}")
+    if log_file and lock:
+        with lock:
+            with open(log_file, "a") as f:
+                f.write(f"ANBA plot saved to {output_file}\n")
 
 
 def plot_section_debug(
