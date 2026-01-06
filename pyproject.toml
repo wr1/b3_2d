@@ -8,25 +8,26 @@ version = "0.1.1"
 description = "2D meshing module for b3m using cgfoil"
 authors = [{name = "wr1", email = "8971152+wr1@users.noreply.github.com"}]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "pyvista",
-    "cgfoil @ git+https://github.com/wr1/cgfoil.git",
+    "cgfoil", # @ git+https://github.com/wr1/cgfoil.git@dev1",
     "pydantic",
     "treeparse",
     "rich",
-    "statesman @ git+https://github.com/wr1/statesman.git",
+    "statesman", # @ git+https://github.com/wr1/statesman.git",
 ]
 
 [project.optional-dependencies]
 tests = [
     "pytest",
     "pytest-cov",
+    "ruff",
 ]
 
 [project.scripts]
-b3-2d = "b3_2d.cli:main"
+b3-2d = "b3_2d.cli.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/b3_2d"]
@@ -39,3 +40,7 @@ source = ["src/b3_2d"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src/b3_2d --cov-report=term-missing"
+
+
+[tool.uv.sources]
+cgfoil = { workspace = true }

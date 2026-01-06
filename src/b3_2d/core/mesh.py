@@ -4,216 +4,273 @@ import os
 import multiprocessing
 import re
 import logging
+import pickle
+import numpy as np
 import pyvista as pv
-from cgfoil.core.main import run_cgfoil
+from rich.progress import Progress
+from cgfoil.core.main import generate_mesh
 from cgfoil.models import Skin, Web, Ply, AirfoilMesh, Thickness
+from cgfoil.cli.export import export_mesh_to_anba
+from cgfoil.utils.io import save_mesh_to_vtk
+from .plotting import plot_section_debug
 
 logger = logging.getLogger(__name__)
 
-# Rotation angle around z-axis
-ROTATION_ANGLE = 90
+
+def sort_points_by_y(mesh: pv.PolyData) -> pv.PolyData:
+    """Sort points by y-coordinate and update connectivity."""
+    mesh = mesh.copy()
+    n = mesh.n_points
+    sorted_indices = sorted(range(n), key=lambda i: mesh.points[i, 1])
+    mesh.points = mesh.points[sorted_indices]
+    old_to_new = {old: new for new, old in enumerate(sorted_indices)}
+    cells = mesh.cells.copy()
+    cells[1::4] = [old_to_new[cells[i]] for i in range(1, len(cells), 4)]
+    cells[2::4] = [old_to_new[cells[i]] for i in range(2, len(cells), 4)]
+    cells[3::4] = [old_to_new[cells[i]] for i in range(3, len(cells), 4)]
+    mesh.cells = cells
+    for key in mesh.point_data.keys():
+        mesh.point_data[key] = mesh.point_data[key][sorted_indices]
+    return mesh
 
 
-def validate_points(points_2d):
-    """Validate that points_2d is a list of tuples with 2 floats."""
+def validate_points(points_2d: list) -> bool:
+    """Validate points_2d is a list of 2D points."""
     if not isinstance(points_2d, list):
         return False
     for p in points_2d:
-        if not isinstance(p, tuple) or len(p) != 2:
+        if not isinstance(p, (list, tuple)) or len(p) != 2:
             return False
         if not all(isinstance(c, (int, float)) for c in p):
             return False
     return True
 
 
-def process_single_section(args):
-    """Process a single section_id."""
-    section_id, vtp_file, output_base_dir = args
+def bb_size(mesh: pv.PolyData) -> float:
+    """Compute bounding box size."""
+    bounds = mesh.bounds
+    return ((bounds[1] - bounds[0]) ** 2 + (bounds[3] - bounds[2]) ** 2) ** 0.5
+
+
+def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
+    """Extract airfoil and web points, applying de-offset and de-twist."""
+    min_panel_id = section_mesh.cell_data["panel_id"].min()
+
+    twist = np.unique(section_mesh.cell_data["twist"])[0]
+    dx = np.unique(section_mesh.cell_data["dx"])[0]
+    dy = np.unique(section_mesh.cell_data["dy"])[0]
+    logger.info(f"Applying translation dx={dx}, dy={dy} and twist={twist} degrees")
+
+    # section_mesh.points[:, 0] += dx
+    # section_mesh.points[:, 1] += dy
+
+    section_mesh.points[:, 0] -= dy
+    section_mesh.points[:, 1] -= dx
+
+    section_mesh = section_mesh.rotate_z(-twist)
+
+    section = section_mesh.threshold(
+        value=(0, section_mesh.cell_data["panel_id"].max()), scalars="panel_id"
+    )
+    te = sort_points_by_y(
+        section_mesh.threshold(value=(min_panel_id, min_panel_id), scalars="panel_id")
+    )
+    section_bb = bb_size(section)
+    te_bb = bb_size(te)
+    if te_bb > 0.03 * section_bb:
+        airfoil = pv.merge([section, te])
+    else:
+        airfoil = section
+    points_2d = airfoil.points[:, :2].tolist()
+    logger.info(f"Extracted {len(points_2d)} airfoil points")
+    web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
+    web2 = section_mesh.threshold(value=(-2, -2), scalars="panel_id")
+    web_points_2d_1 = web1.points[:, :2].tolist()
+    web_points_2d_2 = web2.points[:, :2].tolist()
+    web_data = [(web_points_2d_1, web1), (web_points_2d_2, web2)]
+    return points_2d, web_data, airfoil
+
+
+def get_thickness_and_material_arrays(mesh: pv.PolyData) -> tuple:
+    """Get thickness and material arrays from mesh."""
+    mesh_point = mesh.cell_data_to_point_data(pass_cell_data=True)
+    thickness_keys = [
+        k for k in mesh_point.point_data.keys() if re.match(r"ply_.*_thickness", k)
+    ]
+    thickness_keys.sort(key=lambda x: int(re.search(r"ply_(\d+)", x).group(1)))
+    material_keys = [k.replace("_thickness", "_material") for k in thickness_keys]
+    logger.info(f"Thickness keys: {thickness_keys}")
+    logger.info(f"Material keys: {material_keys}")
+    logger.info(f"Available point data keys: {list(mesh_point.point_data.keys())}")
+    thicknesses = {k: mesh_point.point_data[k] for k in thickness_keys}
+    materials = {k: mesh_point.cell_data[k] for k in material_keys}
+    return thicknesses, materials
+
+
+def get_ply_thicknesses_and_materials(airfoil: pv.PolyData, web_data: list) -> tuple:
+    """Get ply thicknesses and materials from airfoil and web data."""
+    airfoil_thicknesses, airfoil_materials = get_thickness_and_material_arrays(airfoil)
+    web_thicknesses_and_materials = [
+        get_thickness_and_material_arrays(web_mesh) for _, web_mesh in web_data
+    ]
+    web_thicknesses = [t for t, _ in web_thicknesses_and_materials]
+    web_materials = [m for _, m in web_thicknesses_and_materials]
+    return airfoil_thicknesses, airfoil_materials, web_thicknesses, web_materials
+
+
+def define_skins_and_webs(
+    airfoil_thicknesses: dict,
+    airfoil_materials: dict,
+    web_data: list,
+    web_thicknesses: list,
+    web_materials: list,
+) -> tuple:
+    """Define skins and webs from thicknesses, materials, and points."""
+    skins = {}
+    for i, key in enumerate(airfoil_thicknesses.keys(), start=1):
+        mat_key = key.replace("_thickness", "_material")
+        mat_array = airfoil_materials[mat_key]
+        unique_mats = np.max(mat_array)
+        material = int(unique_mats)
+        logger.info(
+            f"For skin {i}, thickness key: {key}, material key: {mat_key}, material: {material}"
+        )
+        skins[f"skin{i}"] = Skin(
+            thickness=Thickness(type="array", array=list(airfoil_thicknesses[key])),
+            material=material,
+            sort_index=i,
+        )
+    web_definition = {}
+    web_meshes = [
+        ("web1", web_thicknesses[0], web_materials[0], web_data[0][0]),
+        ("web2", web_thicknesses[1], web_materials[1], web_data[1][0]),
+    ]
+    for web_name, thicknesses, materials, points in web_meshes:
+        plies = []
+        for key in thicknesses:
+            mat_key = key.replace("_thickness", "_material")
+            mat_array = materials[mat_key]
+            unique_mats = np.unique(mat_array)
+            material = int(unique_mats[-1])
+            plies.append(
+                Ply(
+                    thickness=Thickness(type="array", array=list(thicknesses[key])),
+                    material=material,
+                )
+            )
+        normal_ref = [1, 0] if web_name == "web1" else [-1, 0]
+        web_definition[web_name] = Web(
+            coord_input=points, plies=plies, normal_ref=normal_ref
+        )
+    return skins, web_definition
+
+
+def log_thicknesses(skins: dict, web_definition: dict) -> None:
+    """Log thickness information."""
+    logger.info(f"Assigned thickness arrays for airfoil skins: {list(skins.keys())}")
+    for skin_name, skin in skins.items():
+        thickness = skin.thickness.array
+        if thickness:
+            logger.info(
+                f"Skin {skin_name}: min {min(thickness):.3f}, max {max(thickness):.3f}"
+            )
+    logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
+    for web_name, web in web_definition.items():
+        for i, ply in enumerate(web.plies):
+            thickness = ply.thickness.array
+            if thickness:
+                logger.info(
+                    f"Web {web_name} ply {i}: min {min(thickness):.3f}, max {max(thickness):.3f}"
+                )
+
+
+def process_single_section(
+    section_id: int, vtp_file: str, output_base_dir: str, matdb: dict = None, debug: bool = False
+) -> None:
+    """Process a single section."""
+    section_dir = os.path.join(output_base_dir, f"section_{section_id}")
+    os.makedirs(section_dir, exist_ok=True)
+    root_logger = logging.getLogger()
+    original_level = root_logger.level
+    root_logger.setLevel(logging.WARNING)
+    section_log_file = os.path.join(section_dir, "2dmesh.log")
+    section_file_handler = logging.FileHandler(section_log_file)
+    section_file_handler.setLevel(logging.INFO)
+    logger.addHandler(section_file_handler)
     try:
-        logger.info(f"Starting processing section_id: {section_id}")
-        # Load VTP file in each process to avoid serialization issues
-        mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
-
-        # Create subdirectory
-        section_dir = os.path.join(output_base_dir, f"section_{section_id}")
-        os.makedirs(section_dir, exist_ok=True)
-
-        # Filter mesh for this section_id
+        logger.info(f"Starting processing section {section_id}")
+        mesh_vtp = pv.read(vtp_file).rotate_z(-90).rotate_x(180)
         section_mesh = mesh_vtp.threshold(
             value=(section_id, section_id), scalars="section_id"
         )
-
-        # Extract airfoil (assuming panel_id logic similar to original)
-        airfoil = section_mesh.threshold(value=(0, 12), scalars="panel_id")
-        te = section_mesh.threshold(value=(-3, -3), scalars="panel_id")
-        points_2d = airfoil.points[:, :2].tolist()[:-1] + te.points[:, :2].tolist()[1:]
-        points_2d = [
-            tuple(p) for p in points_2d
-        ]  # Convert to list of tuples for validation
-
+        if debug:
+            plot_section_debug(section_mesh, section_dir, section_id)
+        points_2d, web_data, airfoil = extract_airfoil_and_web_points(section_mesh)
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
-            logger.warning(
-                f"Invalid or insufficient airfoil points for section {section_id}, skipping"
-            )
+            logger.warning(f"Invalid points for section {section_id}, skipping")
             return
-
-        # Extract webs
-        web1 = section_mesh.threshold(value=(-1, -1), scalars="panel_id")
-        web2 = section_mesh.threshold(value=(-2, -2), scalars="panel_id")
-        web_points_2d_1 = web1.points[:, :2].tolist()
-        web_points_2d_2 = web2.points[:, :2].tolist()
-        web_points_2d_1 = [
-            tuple(p) for p in web_points_2d_1
-        ]  # Convert to list of tuples
-        web_points_2d_2 = [
-            tuple(p) for p in web_points_2d_2
-        ]  # Convert to list of tuples
-
-        # Get all ply thickness fields dynamically
-        airfoil_point_data = airfoil.cell_data_to_point_data().point_data
-        te_point_data = te.cell_data_to_point_data().point_data
-        ply_fields = [
-            f
-            for f in airfoil_point_data.keys()
-            if re.match(r"ply_\d+_\w+_\d+_thickness", f)
-        ]
-
-        ply_thicknesses = {}
-        for field in ply_fields:
-            if field in te_point_data:
-                airfoil_thickness = list(airfoil_point_data[field])[:-1]
-                te_thickness = list(te_point_data[field])[1:]
-                combined_thickness = airfoil_thickness + te_thickness
-                match = re.match(r"ply_(\d+)_(\w+)_(\d+)_thickness", field)
-                if match:
-                    num1, slab, num2 = match.groups()
-                    key = f"{num1}_{slab}_{num2}"
-                    ply_thicknesses[key] = combined_thickness
-
-        if not ply_thicknesses:
-            logger.warning(
-                f"No ply thicknesses found for section {section_id}, skipping"
-            )
+        airfoil_thicknesses, airfoil_materials, web_thicknesses, web_materials = (
+            get_ply_thicknesses_and_materials(airfoil, web_data)
+        )
+        if not airfoil_thicknesses:
+            logger.warning(f"No thicknesses for section {section_id}, skipping")
             return
-
-        # Define skins dynamically
-        skins = {}
-        for i, (key, thickness) in enumerate(ply_thicknesses.items()):
-            skins[f"skin_{i}"] = Skin(
-                thickness=Thickness(type="array", array=thickness),
-                material=i + 1,  # Sequential materials starting from 1
-                sort_index=i,
-            )
-
-        # Define webs using full mesh like in cgfoil multi vtp example
-        # Use coord_input with the full list of points, and assigned arrays for thickness
-        web1_point_data = web1.cell_data_to_point_data().point_data
-        web2_point_data = web2.cell_data_to_point_data().point_data
-        material_counter = len(skins) + 1
-        web_definition = {}
-        plies1 = []
-        for field in ply_fields:
-            if field in web1_point_data:
-                thickness_array = list(web1_point_data[field])
-                if any(t > 0 for t in thickness_array):
-                    plies1.append(
-                        Ply(
-                            thickness=Thickness(type="array", array=thickness_array),
-                            material=material_counter,
-                        )
-                    )
-                    material_counter += 1
-        if (
-            web_points_2d_1
-            and len(web_points_2d_1) >= 2
-            and validate_points(web_points_2d_1)
-            and plies1
-        ):
-            web_definition["web1"] = Web(
-                coord_input=web_points_2d_1,  # Full list of points
-                plies=plies1,
-                normal_ref=[1, 0],
-                n_elem=None,
-            )
-        plies2 = []
-        for field in ply_fields:
-            if field in web2_point_data:
-                thickness_array = list(web2_point_data[field])
-                if any(t > 0 for t in thickness_array):
-                    plies2.append(
-                        Ply(
-                            thickness=Thickness(type="array", array=thickness_array),
-                            material=material_counter,
-                        )
-                    )
-                    material_counter += 1
-        if (
-            web_points_2d_2
-            and len(web_points_2d_2) >= 2
-            and validate_points(web_points_2d_2)
-            and plies2
-        ):
-            web_definition["web2"] = Web(
-                coord_input=web_points_2d_2,  # Full list of points
-                plies=plies2,
-                normal_ref=[-1, 0],
-                n_elem=None,
-            )
-
-        # Log assigned thickness arrays for airfoil (skins)
-        logger.info(f"Assigned thickness arrays for airfoil skins: {list(skins.keys())}")
-        for skin_name, skin in skins.items():
-            thickness = skin.thickness.array
-            if thickness:
-                logger.info(f"Skin {skin_name}: min thickness {min(thickness)}, max thickness {max(thickness)}")
-
-        # Log assigned thickness arrays for webs
-        logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
-        for web_name, web in web_definition.items():
-            for i, ply in enumerate(web.plies):
-                thickness = ply.thickness.array
-                if thickness:
-                    logger.info(f"Web {web_name} ply {i} (material {ply.material}): min thickness {min(thickness)}, max thickness {max(thickness)}")
-
-        # Create AirfoilMesh
+        skins, web_definition = define_skins_and_webs(
+            airfoil_thicknesses,
+            airfoil_materials,
+            web_data,
+            web_thicknesses,
+            web_materials,
+        )
+        log_thicknesses(skins, web_definition)
+        vtk_output_file = os.path.join(section_dir, "output.vtk")
         mesh = AirfoilMesh(
             skins=skins,
             webs=web_definition,
-            airfoil_input=points_2d,  # Use the extracted points as list of tuples
-            n_elem=None,  # Do not set to avoid remeshing and messing with thickness distribution
-            plot=False,  # Disable plotting in parallel to avoid issues
+            airfoil_input=points_2d,
+            n_elem=None,
+            plot=False,
             plot_filename=None,
-            vtk=os.path.join(section_dir, "output.vtk"),
+            vtk=vtk_output_file,
         )
-
-        # Run the meshing
-        run_cgfoil(mesh)
-        logger.info(f"Completed processing section_id: {section_id}")
+        mesh_result = generate_mesh(mesh)
+        if mesh.vtk:
+            save_mesh_to_vtk(mesh_result, mesh, mesh.vtk)
+        mesh_file = os.path.join(section_dir, "mesh.pck")
+        with open(mesh_file, "wb") as f:
+            pickle.dump(mesh_result, f)
+        logger.info(f"Mesh saved to {mesh_file}")
+        anba_file = os.path.join(section_dir, "anba.json")
+        export_mesh_to_anba(mesh_file, anba_file, matdb=matdb)
+        logger.info(f"Exported ANBA JSON to {anba_file}")
+        logger.info(f"Completed section {section_id}")
     except Exception as e:
-        logger.error(f"Error processing section_id {section_id}: {e}")
+        logger.error(f"Error processing section {section_id}: {e}", exc_info=True)
+    finally:
+        logger.removeHandler(section_file_handler)
+        root_logger.setLevel(original_level)
 
 
 def process_vtp_multi_section(
-    vtp_file: str, output_base_dir: str, num_processes: int = None
-):
-    """Process VTP file for all unique section_ids, outputting to subdirectories, using multiprocessing."""
-    # Load VTP file to get unique ids
-    mesh_vtp = pv.read(vtp_file).rotate_z(ROTATION_ANGLE)
-
-    # Get unique section_ids
+    vtp_file: str, output_base_dir: str, num_processes: int = None, matdb: dict = None, debug: bool = False
+) -> None:
+    """Process VTP file for all sections using multiprocessing."""
+    mesh_vtp = pv.read(vtp_file)
     if "section_id" not in mesh_vtp.cell_data:
         raise ValueError("section_id not found in VTP file")
-    unique_section_ids = mesh_vtp.cell_data["section_id"]
-    unique_ids = sorted(set(unique_section_ids))
+    unique_ids = sorted(set(mesh_vtp.cell_data["section_id"]))
     total_sections = len(unique_ids)
-    logger.info(f"Found {total_sections} unique section_ids: {unique_ids}")
-
-    # Prepare arguments for multiprocessing
-    args_list = [(section_id, vtp_file, output_base_dir) for section_id in unique_ids]
-
-    # Use multiprocessing Pool
+    logger.info(f"Found {total_sections} unique section_ids: {np.array(unique_ids)}")
     if num_processes is None:
-        num_processes = min(multiprocessing.cpu_count(), total_sections)
-    logger.info(f"Using {num_processes} processes")
-    with multiprocessing.Pool(processes=num_processes) as pool:
-        pool.map(process_single_section, args_list)
+        num_processes = multiprocessing.cpu_count()
+    with Progress() as progress:
+        spinner = progress.add_task("Processing sections...", total=None)
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            pool.starmap(
+                process_single_section,
+                [
+                    (section_id, vtp_file, output_base_dir, matdb, debug)
+                    for section_id in unique_ids
+                ],
+            )
+        progress.update(spinner, completed=True)

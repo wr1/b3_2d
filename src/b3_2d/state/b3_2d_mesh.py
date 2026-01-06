@@ -23,5 +23,6 @@ class B32dStep(Statesman):
         output_dir = workdir / "b3_2d"
         output_dir.mkdir(parents=True, exist_ok=True)
         num_processes = self.config.get("num_processes", None)
-        process_vtp_multi_section(str(vtp_file), str(output_dir), num_processes)
+        matdb = self.config.get("matdb", {})
+        process_vtp_multi_section(str(vtp_file), str(output_dir), num_processes, matdb=matdb)
         self.logger.info(f"2D meshing completed, outputs in {output_dir}")
