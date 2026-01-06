@@ -10,7 +10,7 @@ import json
 def test_cli_app():
     """Test that the CLI app is properly configured."""
     assert app.name == "b3_2d"
-    assert len(app.commands) == 2  # mesh and plot commands
+    assert len(app.commands) == 3  # mesh, plot, span commands
     assert len(app.subgroups) == 1  # anba subgroup
 
 
@@ -99,13 +99,15 @@ def test_plot_command(mock_pv_read, mock_plot):
 
 
 @patch("subprocess.run")
-@patch("b3_2d.cli.cli.Path")
-def test_anba_all_command(mock_path_class, mock_subprocess):
+@patch("shutil.which")
+@patch("pathlib.Path")
+def test_anba_all_command(mock_path_class, mock_which, mock_subprocess):
     """Test anba all command execution."""
     mock_path = MagicMock()
     mock_path.glob.return_value = ["file"]
     mock_path_class.return_value = mock_path
-    mock_subprocess.return_value = MagicMock(returncode=0, stdout="", stderr="")
+    mock_which.return_value = "conda"
+    mock_subprocess.return_value = MagicMock(returncode=0, stdout="anba4-env", stderr="")
     sys.argv = [
         "b3-2d",
         "anba",
@@ -134,20 +136,14 @@ def test_anba_single_command(mock_subprocess):
     assert mock_subprocess.called
 
 
-@patch("b3_2d.core.plotting.plot_anba_results")
-@patch("pyvista.read")
-@patch("b3_2d.cli.cli.json.load")
+@patch("pathlib.Path.exists", return_value=True)
 @patch("builtins.open")
-@patch("b3_2d.cli.cli.Path")
-def test_anba_plot_command(mock_path_class, mock_open, mock_json, mock_pv_read, mock_plot):
+@patch("b3_2d.cli.cli.json.load")
+@patch("pyvista.read")
+@patch("b3_2d.core.plotting.plot_section_anba")
+def test_anba_plot_command(mock_plot, mock_pv_read, mock_json, mock_open, mock_exists):
     """Test anba plot command execution."""
-    mock_path = MagicMock()
-    mock_path.parent = mock_path
-    mock_vtk_file = MagicMock()
-    mock_vtk_file.exists.return_value = True
-    mock_path.__truediv__ = MagicMock(return_value = mock_vtk_file)
-    mock_path_class.return_value = mock_path
-    mock_open.side_effect = lambda *args, **kwargs: MagicMock()
+    mock_open.return_value = MagicMock()
     mock_mesh = mock_pv_read.return_value
     mock_data = {
         "mass_center": [0, 0],

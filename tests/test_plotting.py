@@ -22,8 +22,8 @@ def test_plot_mesh():
         mock_plotter.screenshot.assert_called_once_with("test.png")
 
 
-def test_plot_anba_results():
-    """Test plot_anba_results function."""
+def test_plot_section_anba():
+    """Test plot_section_anba function."""
     with patch("b3_2d.core.plotting.plt") as mock_plt:
         mock_plt.subplots.return_value = (MagicMock(), MagicMock())
         mock_mesh = MagicMock()
@@ -38,9 +38,9 @@ def test_plot_anba_results():
             "principal_angle": 0.0,
         }
 
-        from b3_2d.core.plotting import plot_anba_results
+        from b3_2d.core.plotting import plot_section_anba
 
-        plot_anba_results(mock_mesh, mock_data, "test.png")
+        plot_section_anba(mock_mesh, mock_data, "test.png")
 
         mock_plt.subplots.assert_called_once_with(figsize=(12.8, 6.6))
         # Further assertions can be added if needed
