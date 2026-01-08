@@ -32,13 +32,15 @@ class B32dStep(Statesman):
         table.add_column("Section ID", justify="right")
         table.add_column("Success")
         table.add_column("Errors")
+        table.add_column("Path")
         table.add_column("Created Files")
         for r in results:
             table.add_row(
                 str(r["section_id"]),
                 str(r["success"]),
                 "; ".join(r["errors"]),
-                ", ".join(r["created_files"]),
+                r["output_dir"],
+                ", ".join([Path(f).name for f in r["created_files"]]),
             )
         console.print(table)
         self.logger.info(f"2D meshing completed, outputs in {output_dir}")
