@@ -156,3 +156,4 @@ __temp.txt
 codefold.json
 treeparse.json
 uv.lock
+.aider*
