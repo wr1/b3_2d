@@ -185,7 +185,11 @@ def log_thicknesses(skins: dict, web_definition: dict) -> None:
 
 
 def process_single_section(
-    section_id: int, vtp_file: str, output_base_dir: str, matdb: dict = None, debug: bool = False
+    section_id: int,
+    vtp_file: str,
+    output_base_dir: str,
+    matdb: dict = None,
+    debug: bool = False,
 ) -> dict:
     """Process a single section."""
     section_dir = os.path.join(output_base_dir, f"section_{section_id}")
@@ -195,7 +199,7 @@ def process_single_section(
         "input_file": vtp_file,
         "output_dir": section_dir,
         "created_files": [],
-        "errors": []
+        "errors": [],
     }
     os.makedirs(section_dir, exist_ok=True)
     root_logger = logging.getLogger()
@@ -275,7 +279,11 @@ def process_single_section(
 
 
 def process_vtp_multi_section(
-    vtp_file: str, output_base_dir: str, num_processes: int = None, matdb: dict = None, debug: bool = False
+    vtp_file: str,
+    output_base_dir: str,
+    num_processes: int = None,
+    matdb: dict = None,
+    debug: bool = False,
 ) -> list[dict]:
     """Process VTP file for all sections using multiprocessing."""
     mesh_vtp = pv.read(vtp_file)
@@ -299,7 +307,9 @@ def process_vtp_multi_section(
         progress.update(spinner, completed=True)
     successful_count = sum(1 for r in results if r["success"])
     failed_count = len(results) - successful_count
-    logger.info(f"Processed {total_sections} sections: {successful_count} successful, {failed_count} failed.")
+    logger.info(
+        f"Processed {total_sections} sections: {successful_count} successful, {failed_count} failed."
+    )
     if failed_count > 0:
         logger.warning("Failed sections:")
         for r in results:
