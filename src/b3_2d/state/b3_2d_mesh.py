@@ -1,6 +1,9 @@
+import json
 from pathlib import Path
 from rich.table import Table
 from rich.console import Console
+import pyvista as pv
+import numpy as np
 from statesman import Statesman
 from statesman.core.base import ManagedFile
 from ..core.mesh import process_vtp_multi_section
@@ -26,9 +29,28 @@ class B32dStep(Statesman):
         output_dir.mkdir(parents=True, exist_ok=True)
         num_processes = self.config.get("num_processes", None)
         matdb = self.config.get("matdb", {})
-        results = process_vtp_multi_section(
-            str(vtp_file), str(output_dir), num_processes, matdb=matdb
-        )
+        results = process_vtp_multi_section(str(vtp_file), str(output_dir), num_processes, matdb=matdb)
+        # Compute BOM for successful sections
+        for r in results:
+            if r["success"]:
+                vtk_file = Path(r["output_dir"]) / "output.vtk"
+                if vtk_file.exists():
+                    mesh = pv.read(str(vtk_file))
+                    if "Area" in mesh.cell_data and "material_id" in mesh.cell_data:
+                        total_area = float(mesh.cell_data["Area"].sum())
+                        areas_per_material = {}
+                        for mat_id in np.unique(mesh.cell_data["material_id"]):
+                            mask = mesh.cell_data["material_id"] == mat_id
+                            areas_per_material[int(mat_id)] = float(mesh.cell_data["Area"][mask].sum())
+                        bom_data = {
+                            "total_area": total_area,
+                            "areas_per_material": areas_per_material
+                        }
+                        bom_file = Path(r["output_dir"]) / "bom.json"
+                        with open(bom_file, "w") as f:
+                            json.dump(bom_data, f, indent=2)
+                        r["created_files"].append(str(bom_file))
+                        self.logger.info(f"BOM computed for section {r['section_id']}")
         console = Console()
         table = Table(title="Section Processing Results")
         table.add_column("Section ID", justify="right")
