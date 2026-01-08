@@ -9,6 +9,21 @@ from statesman.core.base import ManagedFile
 from ..core.mesh import process_vtp_multi_section
 
 
+def compute_bom(mesh):
+    """Compute BOM from mesh Area and material_id."""
+    if "Area" in mesh.cell_data and "material_id" in mesh.cell_data:
+        total_area = float(mesh.cell_data["Area"].sum())
+        areas_per_material = {}
+        for mat_id in np.unique(mesh.cell_data["material_id"]):
+            mask = mesh.cell_data["material_id"] == mat_id
+            areas_per_material[int(mat_id)] = float(mesh.cell_data["Area"][mask].sum())
+        return {
+            "total_area": total_area,
+            "areas_per_material": areas_per_material
+        }
+    return None
+
+
 class B32dStep(Statesman):
     """Statesman step for 2D meshing using cgfoil."""
 
@@ -36,16 +51,8 @@ class B32dStep(Statesman):
                 vtk_file = Path(r["output_dir"]) / "output.vtk"
                 if vtk_file.exists():
                     mesh = pv.read(str(vtk_file))
-                    if "Area" in mesh.cell_data and "material_id" in mesh.cell_data:
-                        total_area = float(mesh.cell_data["Area"].sum())
-                        areas_per_material = {}
-                        for mat_id in np.unique(mesh.cell_data["material_id"]):
-                            mask = mesh.cell_data["material_id"] == mat_id
-                            areas_per_material[int(mat_id)] = float(mesh.cell_data["Area"][mask].sum())
-                        bom_data = {
-                            "total_area": total_area,
-                            "areas_per_material": areas_per_material
-                        }
+                    bom_data = compute_bom(mesh)
+                    if bom_data:
                         bom_file = Path(r["output_dir"]) / "bom.json"
                         with open(bom_file, "w") as f:
                             json.dump(bom_data, f, indent=2)

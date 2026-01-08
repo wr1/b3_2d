@@ -44,3 +44,58 @@ def test_plot_section_anba():
 
         mock_plt.subplots.assert_called_once_with(figsize=(12.8, 6.6))
         # Further assertions can be added if needed
+
+
+@patch("b3_2d.core.span_plotting.plt")
+def test_plot_span_centers(mock_plt):
+    """Test plot_span_centers function."""
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
+    from b3_2d.core.span_plotting import plot_span_centers
+
+    data_list = [
+        (1, {"mass_center": [0, 0], "shear_center": [1, 1], "tension_center": [2, 2], "principal_angle": 0.0}),
+        (2, {"mass_center": [0.1, 0.1], "shear_center": [1.1, 1.1], "tension_center": [2.1, 2.1], "principal_angle": 0.1})
+    ]
+    plot_span_centers(data_list, "test.png")
+
+    mock_plt.subplots.assert_called_once_with(2, 2, figsize=(12, 8))
+    mock_plt.savefig.assert_called_once_with("test.png", dpi=400)
+
+
+@patch("b3_2d.core.span_plotting.plt")
+def test_plot_span_stiff(mock_plt):
+    """Test plot_span_stiff function."""
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
+    from b3_2d.core.span_plotting import plot_span_stiff
+
+    data_list = [
+        (1, {"stiffness": [[1, 2], [3, 4]], "mass": [[0.1, 0.2], [0.3, 0.4]]}),
+        (2, {"stiffness": [[1.1, 2.1], [3.1, 4.1]], "mass": [[0.11, 0.21], [0.31, 0.41]]})
+    ]
+    plot_span_stiff(data_list, "test.png")
+
+    mock_plt.subplots.assert_called_once_with(2, 2, figsize=(18, 12))
+    mock_plt.savefig.assert_called_once_with("test.png", dpi=400)
+
+
+@patch("b3_2d.core.span_plotting.plt")
+@patch("pathlib.Path.glob")
+@patch("builtins.open")
+@patch("json.load")
+def test_plot_span_anba(mock_json_load, mock_open, mock_glob, mock_plt):
+    """Test plot_span_anba function."""
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
+    from b3_2d.core.span_plotting import plot_span_anba
+
+    mock_file = MagicMock()
+    mock_file.parent.name = "section_1"
+    mock_glob.return_value = [mock_file]
+    mock_json_load.return_value = {
+        "mass_center": [0, 0], "shear_center": [1, 1], "tension_center": [2, 2], "principal_angle": 0.0,
+        "stiffness": [[1, 2], [3, 4]], "mass": [[0.1, 0.2], [0.3, 0.4]]
+    }
+
+    plot_span_anba("output_dir", "test.png")
+
+    assert mock_plt.subplots.call_count >= 2  # Called for centers and stiff
+    mock_plt.savefig.assert_called()
