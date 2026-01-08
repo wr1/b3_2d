@@ -26,7 +26,9 @@ class B32dStep(Statesman):
         output_dir.mkdir(parents=True, exist_ok=True)
         num_processes = self.config.get("num_processes", None)
         matdb = self.config.get("matdb", {})
-        results = process_vtp_multi_section(str(vtp_file), str(output_dir), num_processes, matdb=matdb)
+        results = process_vtp_multi_section(
+            str(vtp_file), str(output_dir), num_processes, matdb=matdb
+        )
         console = Console()
         table = Table(title="Section Processing Results")
         table.add_column("Section ID", justify="right")
