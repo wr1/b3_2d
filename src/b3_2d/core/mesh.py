@@ -186,14 +186,23 @@ def log_thicknesses(skins: dict, web_definition: dict) -> None:
 
 def process_single_section(
     section_id: int, vtp_file: str, output_base_dir: str, matdb: dict = None, debug: bool = False
-) -> None:
+) -> dict:
     """Process a single section."""
     section_dir = os.path.join(output_base_dir, f"section_{section_id}")
+    result = {
+        "section_id": section_id,
+        "success": True,
+        "input_file": vtp_file,
+        "output_dir": section_dir,
+        "created_files": [],
+        "errors": []
+    }
     os.makedirs(section_dir, exist_ok=True)
     root_logger = logging.getLogger()
     original_level = root_logger.level
     root_logger.setLevel(logging.WARNING)
     section_log_file = os.path.join(section_dir, "2dmesh.log")
+    result["created_files"].append(section_log_file)
     section_file_handler = logging.FileHandler(section_log_file)
     section_file_handler.setLevel(logging.INFO)
     logger.addHandler(section_file_handler)
@@ -207,14 +216,20 @@ def process_single_section(
             plot_section_debug(section_mesh, section_dir, section_id)
         points_2d, web_data, airfoil = extract_airfoil_and_web_points(section_mesh)
         if not points_2d or len(points_2d) < 10 or not validate_points(points_2d):
-            logger.warning(f"Invalid points for section {section_id}, skipping")
-            return
+            msg = f"Invalid points for section {section_id}, skipping"
+            logger.warning(msg)
+            result["success"] = False
+            result["errors"].append(msg)
+            return result
         airfoil_thicknesses, airfoil_materials, web_thicknesses, web_materials = (
             get_ply_thicknesses_and_materials(airfoil, web_data)
         )
         if not airfoil_thicknesses:
-            logger.warning(f"No thicknesses for section {section_id}, skipping")
-            return
+            msg = f"No thicknesses for section {section_id}, skipping"
+            logger.warning(msg)
+            result["success"] = False
+            result["errors"].append(msg)
+            return result
         skins, web_definition = define_skins_and_webs(
             airfoil_thicknesses,
             airfoil_materials,
@@ -236,16 +251,24 @@ def process_single_section(
         mesh_result = generate_mesh(mesh)
         if mesh.vtk:
             save_mesh_to_vtk(mesh_result, mesh, mesh.vtk)
+            result["created_files"].append(vtk_output_file)
         mesh_file = os.path.join(section_dir, "mesh.pck")
         with open(mesh_file, "wb") as f:
             pickle.dump(mesh_result, f)
+        result["created_files"].append(mesh_file)
         logger.info(f"Mesh saved to {mesh_file}")
         anba_file = os.path.join(section_dir, "anba.json")
         export_mesh_to_anba(mesh_file, anba_file, matdb=matdb)
+        result["created_files"].append(anba_file)
         logger.info(f"Exported ANBA JSON to {anba_file}")
         logger.info(f"Completed section {section_id}")
+        return result
     except Exception as e:
-        logger.error(f"Error processing section {section_id}: {e}", exc_info=True)
+        msg = f"Error processing section {section_id}: {e}"
+        logger.error(msg, exc_info=True)
+        result["success"] = False
+        result["errors"].append(str(e))
+        return result
     finally:
         logger.removeHandler(section_file_handler)
         root_logger.setLevel(original_level)
@@ -266,7 +289,7 @@ def process_vtp_multi_section(
     with Progress() as progress:
         spinner = progress.add_task("Processing sections...", total=None)
         with multiprocessing.Pool(processes=num_processes) as pool:
-            pool.starmap(
+            results = pool.starmap(
                 process_single_section,
                 [
                     (section_id, vtp_file, output_base_dir, matdb, debug)
@@ -274,3 +297,14 @@ def process_vtp_multi_section(
                 ],
             )
         progress.update(spinner, completed=True)
+    successful_count = sum(1 for r in results if r["success"])
+    failed_count = len(results) - successful_count
+    logger.info(f"Processed {total_sections} sections: {successful_count} successful, {failed_count} failed.")
+    if failed_count > 0:
+        logger.warning("Failed sections:")
+        for r in results:
+            if not r["success"]:
+                errors_str = "; ".join(r.get("errors", ["Unknown error"]))
+                logger.warning(f"  Section {r['section_id']}: {errors_str}")
+                if r["created_files"]:
+                    logger.info(f"    Created partial files: {r['created_files']}")
