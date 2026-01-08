@@ -1,3 +1,4 @@
+[![Test](https://github.com/wr1/cgfoil/actions/workflows/ci.yml/badge.svg)](https://github.com/wr1/b3_2d/actions/workflows/ci.yml)![Version](https://img.shields.io/github/v/release/wr1/b3_2d)
 # b3_2d
 
 A 2D meshing module for b3m, leveraging cgfoil for generating structured meshes from VTP files. This tool processes multi-section airfoil data, extracts ply thicknesses, and produces meshes suitable for finite element analysis.

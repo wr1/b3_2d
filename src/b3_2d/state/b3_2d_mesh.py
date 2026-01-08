@@ -46,6 +46,7 @@ class B32dStep(Statesman):
         matdb = self.config.get("matdb", {})
         results = process_vtp_multi_section(str(vtp_file), str(output_dir), num_processes, matdb=matdb)
         # Compute BOM for successful sections
+        bom_sections = []
         for r in results:
             if r["success"]:
                 vtk_file = Path(r["output_dir"]) / "output.vtk"
@@ -57,7 +58,9 @@ class B32dStep(Statesman):
                         with open(bom_file, "w") as f:
                             json.dump(bom_data, f, indent=2)
                         r["created_files"].append(str(bom_file))
-                        self.logger.info(f"BOM computed for section {r['section_id']}")
+                        bom_sections.append(int(r['section_id']))
+        if bom_sections:
+            self.logger.info(f"BOM computed for sections: {bom_sections}")
         console = Console()
         table = Table(title="Section Processing Results")
         table.add_column("Section ID", justify="right")
