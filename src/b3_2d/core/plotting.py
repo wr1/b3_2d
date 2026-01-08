@@ -37,7 +37,7 @@ def plot_section_anba(
     data: dict,
     output_file: str = "anba_plot.png",
     log_file: Optional[str] = None,
-    lock = None,
+    lock=None,
 ) -> None:
     """Plot ANBA4 results on the mesh using matplotlib."""
     required_keys = ["mass_center", "shear_center", "tension_center", "principal_angle"]
@@ -45,7 +45,9 @@ def plot_section_anba(
         if log_file and lock:
             with lock:
                 with open(log_file, "a") as f:
-                    f.write(f"ANBA results not found, skipping plot for {output_file}\n")
+                    f.write(
+                        f"ANBA results not found, skipping plot for {output_file}\n"
+                    )
         return
     centers = {
         "mass_center": np.array(data["mass_center"]),

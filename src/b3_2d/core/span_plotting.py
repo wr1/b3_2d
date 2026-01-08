@@ -47,7 +47,9 @@ def plot_span_centers(data_list: list, output_file: str) -> None:
 
 def plot_span_stiff(data_list: list, output_file: str) -> None:
     """Plot ANBA stiffnesses and masses along blade span."""
-    stiff_data = [(d[0], d[1]) for d in data_list if "stiffness" in d[1] and "mass" in d[1]]
+    stiff_data = [
+        (d[0], d[1]) for d in data_list if "stiffness" in d[1] and "mass" in d[1]
+    ]
     if not stiff_data:
         logger.warning("No stiffness data available for span plotting")
         return
@@ -56,25 +58,25 @@ def plot_span_stiff(data_list: list, output_file: str) -> None:
     masses = [d[1]["mass"] for d in stiff_data]
     fig, axes = plt.subplots(2, 2, figsize=(18, 12))
     # Stiff[0][0]
-    axes[0, 0].plot(z_stiff, [s[0][0] for s in stiffs], marker='o')
+    axes[0, 0].plot(z_stiff, [s[0][0] for s in stiffs], marker="o")
     axes[0, 0].set_xlabel("Section ID")
     axes[0, 0].set_ylabel("Stiff[0][0]")
     axes[0, 0].set_title("Stiffness [0][0] along Blade")
     axes[0, 0].grid(True)
     # Stiff[1][1]
-    axes[0, 1].plot(z_stiff, [s[1][1] for s in stiffs], marker='o')
+    axes[0, 1].plot(z_stiff, [s[1][1] for s in stiffs], marker="o")
     axes[0, 1].set_xlabel("Section ID")
     axes[0, 1].set_ylabel("Stiff[1][1]")
     axes[0, 1].set_title("Stiffness [1][1] along Blade")
     axes[0, 1].grid(True)
     # M[0][0]
-    axes[1, 0].plot(z_stiff, [m[0][0] for m in masses], marker='o')
+    axes[1, 0].plot(z_stiff, [m[0][0] for m in masses], marker="o")
     axes[1, 0].set_xlabel("Section ID")
     axes[1, 0].set_ylabel("M[0][0]")
     axes[1, 0].set_title("Mass [0][0] along Blade")
     axes[1, 0].grid(True)
     # M[1][1]
-    axes[1, 1].plot(z_stiff, [m[1][1] for m in masses], marker='o')
+    axes[1, 1].plot(z_stiff, [m[1][1] for m in masses], marker="o")
     axes[1, 1].set_xlabel("Section ID")
     axes[1, 1].set_ylabel("M[1][1]")
     axes[1, 1].set_title("Mass [1][1] along Blade")
@@ -93,7 +95,12 @@ def plot_span_anba(output_dir: str, output_file: str) -> None:
         sid = int(af.parent.name.split("_")[1])
         with open(af, "r") as f:
             data = json.load(f)
-        required_keys = ["mass_center", "shear_center", "tension_center", "principal_angle"]
+        required_keys = [
+            "mass_center",
+            "shear_center",
+            "tension_center",
+            "principal_angle",
+        ]
         if all(k in data for k in required_keys):
             data_list.append((sid, data))
         else:
@@ -102,7 +109,7 @@ def plot_span_anba(output_dir: str, output_file: str) -> None:
     if not data_list:
         logger.warning("No valid ANBA data found")
         return
-    centers_file = output_file.replace('.png', '_centers.png')
+    centers_file = output_file.replace(".png", "_centers.png")
     plot_span_centers(data_list, centers_file)
-    stiff_file = output_file.replace('.png', '_stiff.png')
+    stiff_file = output_file.replace(".png", "_stiff.png")
     plot_span_stiff(data_list, stiff_file)

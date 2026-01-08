@@ -12,9 +12,13 @@ def test_b32d_step():
     """Test B32dStep execution."""
     if B32dStep is None:
         import pytest
+
         pytest.skip("Statesman not available")
     with (
-        patch("b3_2d.state.b3_2d_mesh.B32dStep.load_config", return_value={"workdir": "work", "num_processes": 4}),
+        patch(
+            "b3_2d.state.b3_2d_mesh.B32dStep.load_config",
+            return_value={"workdir": "work", "num_processes": 4},
+        ),
         patch("pyvista.read") as mock_pv_read,
         patch("b3_2d.state.b3_2d_mesh.process_vtp_multi_section") as mock_process,
         patch("pathlib.Path") as mock_path_class,

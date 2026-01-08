@@ -4,7 +4,6 @@ import sys
 import pytest
 from unittest.mock import patch, MagicMock
 from b3_2d.cli.cli import app
-import json
 
 
 def test_cli_app():
@@ -107,7 +106,9 @@ def test_anba_all_command(mock_path_class, mock_which, mock_subprocess):
     mock_path.glob.return_value = ["file"]
     mock_path_class.return_value = mock_path
     mock_which.return_value = "conda"
-    mock_subprocess.return_value = MagicMock(returncode=0, stdout="anba4-env", stderr="")
+    mock_subprocess.return_value = MagicMock(
+        returncode=0, stdout="anba4-env", stderr=""
+    )
     sys.argv = [
         "b3-2d",
         "anba",

@@ -7,8 +7,6 @@ from treeparse import cli, command, option, group
 import pyvista as pv
 import json
 from pathlib import Path
-import numpy as np
-import matplotlib.pyplot as plt
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,7 +91,7 @@ def anba_all_command(
     if result.returncode != 0:
         logger.error(f"ANBA4 failed: {result.stderr}")
     else:
-        logger.info(f"ANBA4 completed for all sections")
+        logger.info("ANBA4 completed for all sections")
 
 
 def anba_single_command(

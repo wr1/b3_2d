@@ -52,7 +52,9 @@ class B32dAnbaStep(Statesman):
             "OMP_NUM_THREADS": "1",
             "CUDA_VISIBLE_DEVICES": "-1",
         }
-        with Progress(SpinnerColumn(), TextColumn("Running ANBA4 on all sections...")) as progress:
+        with Progress(
+            SpinnerColumn(), TextColumn("Running ANBA4 on all sections...")
+        ) as progress:
             task = progress.add_task("", total=None)
             result = subprocess.run(
                 conda_command,
