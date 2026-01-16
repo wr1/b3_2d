@@ -53,8 +53,24 @@ def test_plot_span_centers(mock_plt):
     from b3_2d.core.span_plotting import plot_span_centers
 
     data_list = [
-        (1, {"mass_center": [0, 0], "shear_center": [1, 1], "tension_center": [2, 2], "principal_angle": 0.0}),
-        (2, {"mass_center": [0.1, 0.1], "shear_center": [1.1, 1.1], "tension_center": [2.1, 2.1], "principal_angle": 0.1})
+        (
+            1,
+            {
+                "mass_center": [0, 0],
+                "shear_center": [1, 1],
+                "tension_center": [2, 2],
+                "principal_angle": 0.0,
+            },
+        ),
+        (
+            2,
+            {
+                "mass_center": [0.1, 0.1],
+                "shear_center": [1.1, 1.1],
+                "tension_center": [2.1, 2.1],
+                "principal_angle": 0.1,
+            },
+        ),
     ]
     plot_span_centers(data_list, "test.png")
 
@@ -70,7 +86,13 @@ def test_plot_span_stiff(mock_plt):
 
     data_list = [
         (1, {"stiffness": [[1, 2], [3, 4]], "mass": [[0.1, 0.2], [0.3, 0.4]]}),
-        (2, {"stiffness": [[1.1, 2.1], [3.1, 4.1]], "mass": [[0.11, 0.21], [0.31, 0.41]]})
+        (
+            2,
+            {
+                "stiffness": [[1.1, 2.1], [3.1, 4.1]],
+                "mass": [[0.11, 0.21], [0.31, 0.41]],
+            },
+        ),
     ]
     plot_span_stiff(data_list, "test.png")
 
@@ -91,8 +113,12 @@ def test_plot_span_anba(mock_json_load, mock_open, mock_glob, mock_plt):
     mock_file.parent.name = "section_1"
     mock_glob.return_value = [mock_file]
     mock_json_load.return_value = {
-        "mass_center": [0, 0], "shear_center": [1, 1], "tension_center": [2, 2], "principal_angle": 0.0,
-        "stiffness": [[1, 2], [3, 4]], "mass": [[0.1, 0.2], [0.3, 0.4]]
+        "mass_center": [0, 0],
+        "shear_center": [1, 1],
+        "tension_center": [2, 2],
+        "principal_angle": 0.0,
+        "stiffness": [[1, 2], [3, 4]],
+        "mass": [[0.1, 0.2], [0.3, 0.4]],
     }
 
     plot_span_anba("output_dir", "test.png")
