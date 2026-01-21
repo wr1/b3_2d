@@ -18,15 +18,12 @@ def test_b32d_step():
         import pytest
 
         pytest.skip("Statesman not available")
-    with (
-        patch(
-            "b3_2d.state.b3_2d_mesh.B32dStep.load_config",
-            return_value={"workdir": "work", "num_processes": 4},
-        ),
-        patch("pyvista.read") as mock_pv_read,
-        patch("b3_2d.state.b3_2d_mesh.process_vtp_multi_section") as mock_process,
-        patch("pathlib.Path") as mock_path_class,
-    ):
+    with patch(
+        "b3_2d.state.b3_2d_mesh.B32dStep.load_config",
+        return_value={"workdir": "work", "num_processes": 4},
+    ), patch("pyvista.read") as mock_pv_read, patch(
+        "b3_2d.state.b3_2d_mesh.process_vtp_multi_section"
+    ) as mock_process, patch("pathlib.Path") as mock_path_class:
         mock_pv_read.return_value = MagicMock()
         mock_pv_read.return_value.cell_data = {"section_id": [1, 2]}
         mock_config_path = MagicMock()

@@ -29,7 +29,6 @@ def test_process_vtp_multi_section(mock_pool, mock_progress, mock_pv_read):
     mock_progress.return_value.__exit__ = MagicMock()
 
     # Mock pool
-    mock_pool_instance = mock_pool.return_value
 
     # Call the function
     process_vtp_multi_section("dummy.vtp", "/tmp/output", num_processes=1)

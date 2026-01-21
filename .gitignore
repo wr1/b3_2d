@@ -157,3 +157,5 @@ codefold.json
 treeparse.json
 uv.lock
 .aider*
+cache/
+anba.json
