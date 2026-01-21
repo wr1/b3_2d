@@ -12,11 +12,11 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "pyvista",
-    "cgfoil", # @ git+https://github.com/wr1/cgfoil.git@dev1",
+    "cgfoil",
     "pydantic",
     "treeparse",
     "rich",
-    "statesman", # @ git+https://github.com/wr1/statesman.git",
+    "statesman",
 ]
 
 [project.optional-dependencies]
@@ -40,7 +40,7 @@ source = ["src/b3_2d"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=src/b3_2d --cov-report=term-missing"
-
+testpaths = ["tests", "examples"]
 
 [tool.uv.sources]
 cgfoil = { workspace = true }
