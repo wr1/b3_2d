@@ -5,6 +5,7 @@ import numpy as np
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 import pyvista as pv
+import os
 
 try:
     from b3_2d.core.mesh import (
@@ -70,7 +71,7 @@ class TestExtractAirfoilAndWebPoints:
         assert isinstance(airfoil, pv.UnstructuredGrid)
 
     def test_no_negative_panels(self, mock_mesh_with_data):
-        """Test case with no negative panel_ids (no TE/webs)."""
+        """Test case with no negative panel_ids (no TE or webs)."""
         mock_mesh_with_data.cell_data['panel_id'] = np.zeros(mock_mesh_with_data.n_cells)
         points_2d, web_data, airfoil = extract_airfoil_and_web_points(mock_mesh_with_data)
         assert len(web_data) == 0

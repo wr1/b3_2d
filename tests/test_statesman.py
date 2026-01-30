@@ -4,7 +4,8 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 
 try:
-    from b3_2d.state.b3_2d_mesh import B32dStep, compute_bom
+    from b3_2d.state.b3_2d_mesh import B32dStep
+    from b3_2d.core.bom import compute_bom
     from b3_2d.state.b3_2d_anba import B32dAnbaStep
 except ImportError:
     B32dStep = None
@@ -78,6 +79,52 @@ def test_compute_bom_missing_data():
     mock_mesh.cell_data = {}
     result = compute_bom(mock_mesh)
     assert result is None
+
+
+def test_compute_bom_with_mass():
+    """Test BOM computation with mass using matdb."""
+    if compute_bom is None:
+        import pytest
+
+        pytest.skip("Function not available")
+    mock_mesh = MagicMock()
+    mock_mesh.cell_data = {
+        "Area": np.array([1.0, 2.0, 3.0]),
+        "material_id": np.array([1, 1, 2]),
+    }
+    matdb = {1: {"density": 1600.0}, 2: {"density": 1200.0}}
+    result = compute_bom(mock_mesh, matdb)
+    expected = {
+        "total_area": 6.0,
+        "areas_per_material": {1: 3.0, 2: 3.0},
+        "total_mass": 3.0 * 1600.0 + 3.0 * 1200.0,  # 4800.0 + 3600.0 = 8400.0
+        "masses_per_material": {1: 3.0 * 1600.0, 2: 3.0 * 1200.0},  # {4800.0, 3600.0}
+    }
+    assert result == expected
+
+
+def test_compute_bom_with_partial_matdb():
+    """Test BOM computation with partial matdb (missing density for some materials)."""
+    if compute_bom is None:
+        import pytest
+
+        pytest.skip("Function not available")
+    mock_mesh = MagicMock()
+    mock_mesh.cell_data = {
+        "Area": np.array([1.0, 2.0, 3.0]),
+        "material_id": np.array([1, 1, 2]),
+    }
+    matdb = {1: {"density": 1600.0}}  # Missing density for material 2
+    with patch("b3_2d.core.bom.logger") as mock_logger:
+        result = compute_bom(mock_mesh, matdb)
+        expected = {
+            "total_area": 6.0,
+            "areas_per_material": {1: 3.0, 2: 3.0},
+            "total_mass": 3.0 * 1600.0,  # Only for material 1
+            "masses_per_material": {1: 3.0 * 1600.0},  # Only material 1
+        }
+        assert result == expected
+        mock_logger.warning.assert_called_once_with("Density not found in matdb for material ID 2; skipping mass calculation.")
 
 
 @patch("b3_2d.state.b3_2d_anba.open")
