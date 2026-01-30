@@ -20,16 +20,27 @@ def compute_bom(mesh, matdb: dict = None):
     bom_data = {"total_area": total_area, "areas_per_material": areas_per_material}
     
     if matdb:
+        # Build lookup from id to properties
+        id_to_props = {}
+        for name, props in matdb.items():
+            if 'id' in props:
+                id_to_props[props['id']] = props
+        
         masses_per_material = {}
         total_mass = 0.0
         for mat_id, area in areas_per_material.items():
-            if mat_id in matdb and "density" in matdb[mat_id]:
-                density = matdb[mat_id]["density"]
+            if mat_id in id_to_props and "rho" in id_to_props[mat_id]:
+                density = id_to_props[mat_id]["rho"]
                 mass = area * density
                 masses_per_material[mat_id] = mass
                 total_mass += mass
             else:
-                logger.warning(f"Density not found in matdb for material ID {mat_id}; skipping mass calculation.")
+                if mat_id in id_to_props:
+                    available_keys = list(id_to_props[mat_id].keys())
+                    logger.warning(f"Density (rho) not found in matdb for material ID {mat_id} (attempted key: 'rho'). Available keys in matdb for this material: {available_keys}. Skipping mass calculation.")
+                else:
+                    available_mat_ids = list(id_to_props.keys())
+                    logger.warning(f"Material ID {mat_id} not found in matdb. Available material IDs: {available_mat_ids}. Skipping mass calculation.")
         bom_data["total_mass"] = total_mass
         bom_data["masses_per_material"] = masses_per_material
     

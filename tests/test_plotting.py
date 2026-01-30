@@ -125,3 +125,29 @@ def test_plot_span_anba(mock_json_load, mock_open, mock_glob, mock_plt):
 
     assert mock_plt.subplots.call_count >= 2  # Called for centers and stiff
     mock_plt.savefig.assert_called()
+
+
+@patch("b3_2d.core.bom_plotting.plt")
+@patch("pathlib.Path.glob")
+@patch("builtins.open")
+@patch("json.load")
+def test_plot_bom_spanwise(mock_json_load, mock_open, mock_glob, mock_plt):
+    """Test plot_bom_spanwise function."""
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
+    from b3_2d.core.bom_plotting import plot_bom_spanwise
+
+    mock_file = MagicMock()
+    mock_file.parent.name = "section_1"
+    mock_glob.return_value = [mock_file]
+    mock_json_load.return_value = {
+        "total_area": 10.0,
+        "areas_per_material": {1: 5.0, 2: 5.0},
+        "total_mass": 100.0,
+        "masses_per_material": {1: 50.0, 2: 50.0},
+    }
+    matdb = {"carbon": {"id": 1}, "glass": {"id": 2}}
+
+    plot_bom_spanwise("output_dir", "test.png", matdb)
+
+    mock_plt.subplots.assert_called_once_with(2, 1, figsize=(12, 8))
+    mock_plt.savefig.assert_called_once_with("test.png", dpi=400)

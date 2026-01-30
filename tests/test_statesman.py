@@ -92,13 +92,16 @@ def test_compute_bom_with_mass():
         "Area": np.array([1.0, 2.0, 3.0]),
         "material_id": np.array([1, 1, 2]),
     }
-    matdb = {1: {"density": 1600.0}, 2: {"density": 1200.0}}
+    matdb = {
+        "carbon": {"id": 1, "rho": 1600.0},
+        "glass": {"id": 2, "rho": 2000.0}
+    }
     result = compute_bom(mock_mesh, matdb)
     expected = {
         "total_area": 6.0,
         "areas_per_material": {1: 3.0, 2: 3.0},
-        "total_mass": 3.0 * 1600.0 + 3.0 * 1200.0,  # 4800.0 + 3600.0 = 8400.0
-        "masses_per_material": {1: 3.0 * 1600.0, 2: 3.0 * 1200.0},  # {4800.0, 3600.0}
+        "total_mass": 3.0 * 1600.0 + 3.0 * 2000.0,  # 4800.0 + 6000.0 = 10800.0
+        "masses_per_material": {1: 3.0 * 1600.0, 2: 3.0 * 2000.0},  # {4800.0, 6000.0}
     }
     assert result == expected
 
@@ -114,7 +117,7 @@ def test_compute_bom_with_partial_matdb():
         "Area": np.array([1.0, 2.0, 3.0]),
         "material_id": np.array([1, 1, 2]),
     }
-    matdb = {1: {"density": 1600.0}}  # Missing density for material 2
+    matdb = {"carbon": {"id": 1, "rho": 1600.0}}  # Missing entry for id 2
     with patch("b3_2d.core.bom.logger") as mock_logger:
         result = compute_bom(mock_mesh, matdb)
         expected = {
@@ -124,7 +127,34 @@ def test_compute_bom_with_partial_matdb():
             "masses_per_material": {1: 3.0 * 1600.0},  # Only material 1
         }
         assert result == expected
-        mock_logger.warning.assert_called_once_with("Density not found in matdb for material ID 2; skipping mass calculation.")
+        mock_logger.warning.assert_called_once_with("Material ID 2 not found in matdb. Available material IDs: [1]. Skipping mass calculation.")
+
+
+def test_compute_bom_with_wrong_key_matdb():
+    """Test BOM computation with matdb having wrong key type."""
+    if compute_bom is None:
+        import pytest
+
+        pytest.skip("Function not available")
+    mock_mesh = MagicMock()
+    mock_mesh.cell_data = {
+        "Area": np.array([1.0, 2.0, 3.0]),
+        "material_id": np.array([1, 1, 2]),
+    }
+    matdb = {"carbon": {"id": "1", "rho": 1600.0}}  # String id instead of int
+    with patch("b3_2d.core.bom.logger") as mock_logger:
+        result = compute_bom(mock_mesh, matdb)
+        expected = {
+            "total_area": 6.0,
+            "areas_per_material": {1: 3.0, 2: 3.0},
+            "total_mass": 0.0,  # No masses calculated
+            "masses_per_material": {},
+        }
+        assert result == expected
+        # Should call warning for both 1 and 2
+        assert mock_logger.warning.call_count == 2
+        mock_logger.warning.assert_any_call("Material ID 1 not found in matdb. Available material IDs: ['1']. Skipping mass calculation.")
+        mock_logger.warning.assert_any_call("Material ID 2 not found in matdb. Available material IDs: ['1']. Skipping mass calculation.")
 
 
 @patch("b3_2d.state.b3_2d_anba.open")
@@ -149,6 +179,9 @@ def test_b32d_anba_step(
     mock_which.return_value = "conda"
     mock_open.return_value.__enter__.return_value = MagicMock()
     mock_config_path = MagicMock()
+    mock_config_dir = MagicMock()
+    mock_workdir = MagicMock()
+    mock_path_class.return_value = mock_config_path
     mock_config_path.parent = MagicMock()
     mock_config_path.parent.__truediv__ = MagicMock(return_value=MockPath())
     mock_path_class.return_value = mock_config_path
