@@ -169,6 +169,30 @@ def span_plot_command(
     plot_span_anba(output_dir, output_file)
 
 
+def post_command(
+    output_dir: str,
+    matdb_file: str = None,
+    verbose: bool = False,
+) -> None:
+    """Run postprocessing plots for BOM and ANBA."""
+    from ..core.bom_plotting import plot_bom_spanwise
+    from ..core.span_plotting import plot_span_anba
+    import json
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    matdb = {}
+    if matdb_file:
+        with open(matdb_file, "r") as f:
+            matdb = json.load(f)
+    
+    bom_plot_file = Path(output_dir) / "bom_spanwise.png"
+    plot_bom_spanwise(output_dir, str(bom_plot_file), matdb)
+    
+    anba_plot_file = Path(output_dir) / "anba_spanwise.png"
+    plot_span_anba(output_dir, str(anba_plot_file))
+
+
 mesh_cmd = command(
     name="mesh",
     help="Process VTP file for multi-section meshing.",
@@ -336,6 +360,31 @@ span_cmd = command(
     ],
 )
 
+post_cmd = command(
+    name="post",
+    help="Run postprocessing plots for BOM and ANBA.",
+    callback=post_command,
+    options=[
+        option(
+            flags=["--output-dir", "-o"],
+            arg_type=str,
+            required=True,
+            help="Output directory containing section_*/",
+        ),
+        option(
+            flags=["--matdb-file", "-m"],
+            arg_type=str,
+            help="Material database JSON file",
+        ),
+        option(
+            flags=["--verbose", "-V"],
+            arg_type=bool,
+            default=False,
+            help="Verbose output",
+        ),
+    ],
+)
+
 anba_group = group(
     name="anba",
     help="Run ANBA4 on meshes.",
@@ -345,7 +394,7 @@ anba_group = group(
 app = cli(
     name="b3_2d",
     help="2D meshing for b3m using cgfoil.",
-    commands=[mesh_cmd, plot_cmd, span_cmd],
+    commands=[mesh_cmd, plot_cmd, span_cmd, post_cmd],
     subgroups=[anba_group],
     show_types=True,
     show_defaults=True,

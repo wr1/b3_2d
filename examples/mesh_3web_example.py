@@ -6,6 +6,7 @@ import json
 from b3_2d.core.mesh import process_vtp_multi_section
 from b3_2d.core.bom import compute_bom
 from b3_2d.core.bom_plotting import plot_bom_spanwise
+from b3_2d.core.span_plotting import plot_span_anba
 
 # Example: Process draped_3web.vtk for multi-section meshing with 3 webs
 vtp_file = "examples/draped_3web.vtk"
@@ -63,11 +64,20 @@ for r in results:
                     print(f"    Masses per Material: {bom_data['masses_per_material']}")
                 print()
 
-# Plot BOM spanwise
+# Postprocessing: Plot BOM and ANBA spanwise (test the post step functionality)
+print("\nPostprocessing (testing post step):")
 bom_plot_file = Path(output_dir) / "bom_spanwise.png"
 print(f"Generating BOM spanwise plot: {bom_plot_file}")
 plot_bom_spanwise(output_dir, str(bom_plot_file), matdb)
 print(f"BOM plot saved to: {bom_plot_file.resolve()}")
+
+anba_plot_file = Path(output_dir) / "anba_spanwise.png"
+print(f"Attempting ANBA spanwise plot: {anba_plot_file} (may warn if no ANBA data)")
+plot_span_anba(output_dir, str(anba_plot_file))
+if anba_plot_file.exists():
+    print(f"ANBA plot saved to: {anba_plot_file.resolve()}")
+else:
+    print("ANBA plot not generated (no ANBA data available)")
 
 # Verify VTK files for successful sections
 print("\nVerifying VTK meshes:")

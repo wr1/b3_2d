@@ -9,7 +9,7 @@ from b3_2d.cli.cli import app
 def test_cli_app():
     """Test that the CLI app is properly configured."""
     assert app.name == "b3_2d"
-    assert len(app.commands) == 3  # mesh, plot, span commands
+    assert len(app.commands) == 4  # mesh, plot, span, post commands
     assert len(app.subgroups) == 1  # anba subgroup
 
 
@@ -56,6 +56,24 @@ def test_anba_plot_command_help(capsys):
         app.run()
     captured = capsys.readouterr()
     assert "Plot ANBA4 results for a section" in captured.out
+
+
+def test_span_command_help(capsys):
+    """Test span command help output."""
+    sys.argv = ["b3-2d", "span", "--help"]
+    with pytest.raises(SystemExit):
+        app.run()
+    captured = capsys.readouterr()
+    assert "Plot ANBA stiffnesses and masses along blade span" in captured.out
+
+
+def test_post_command_help(capsys):
+    """Test post command help output."""
+    sys.argv = ["b3-2d", "post", "--help"]
+    with pytest.raises(SystemExit):
+        app.run()
+    captured = capsys.readouterr()
+    assert "Run postprocessing plots for BOM and ANBA" in captured.out
 
 
 @patch("b3_2d.core.mesh.process_vtp_multi_section")
@@ -164,3 +182,38 @@ def test_anba_plot_command(mock_plot, mock_pv_read, mock_json, mock_open, mock_e
     ]
     app.run()
     mock_plot.assert_called_with(mock_mesh, mock_data, "plot.png")
+
+
+@patch("b3_2d.core.span_plotting.plot_span_anba")
+def test_span_command(mock_plot_span):
+    """Test span command execution."""
+    sys.argv = [
+        "b3-2d",
+        "span",
+        "--output-dir",
+        "out",
+        "--output-file",
+        "span.png",
+    ]
+    app.run()
+    mock_plot_span.assert_called_with("out", "span.png")
+
+
+@patch("b3_2d.core.bom_plotting.plot_bom_spanwise")
+@patch("b3_2d.core.span_plotting.plot_span_anba")
+@patch("builtins.open")
+@patch("b3_2d.cli.cli.json.load")
+def test_post_command(mock_json_load, mock_open, mock_plot_anba, mock_plot_bom):
+    """Test post command execution."""
+    mock_json_load.return_value = {}
+    sys.argv = [
+        "b3-2d",
+        "post",
+        "--output-dir",
+        "out",
+        "--matdb-file",
+        "matdb.json",
+    ]
+    app.run()
+    mock_plot_bom.assert_called_with("out", "out/bom_spanwise.png", {})
+    mock_plot_anba.assert_called_with("out", "out/anba_spanwise.png")
