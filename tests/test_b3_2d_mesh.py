@@ -90,10 +90,7 @@ def test_compute_bom_with_mass():
         "Area": np.array([1.0, 2.0, 3.0]),
         "material_id": np.array([1, 1, 2]),
     }
-    matdb = {
-        "carbon": {"id": 1, "rho": 1600.0},
-        "glass": {"id": 2, "rho": 2000.0}
-    }
+    matdb = {"carbon": {"id": 1, "rho": 1600.0}, "glass": {"id": 2, "rho": 2000.0}}
     result = compute_bom(mock_mesh, matdb)
     expected = {
         "total_area": 6.0,
@@ -125,7 +122,9 @@ def test_compute_bom_with_partial_matdb():
             "masses_per_material": {1: 3.0 * 1600.0},  # Only material 1
         }
         assert result == expected
-        mock_logger.warning.assert_called_once_with("Material ID 2 not found in matdb. Available material IDs: [1]. Skipping mass calculation.")
+        mock_logger.warning.assert_called_once_with(
+            "Material ID 2 not found in matdb. Available material IDs: [1]. Skipping mass calculation."
+        )
 
 
 def test_compute_bom_with_wrong_key_matdb():
@@ -151,5 +150,9 @@ def test_compute_bom_with_wrong_key_matdb():
         assert result == expected
         # Should call warning for both 1 and 2
         assert mock_logger.warning.call_count == 2
-        mock_logger.warning.assert_any_call("Material ID 1 not found in matdb. Available material IDs: ['1']. Skipping mass calculation.")
-        mock_logger.warning.assert_any_call("Material ID 2 not found in matdb. Available material IDs: ['1']. Skipping mass calculation.")
+        mock_logger.warning.assert_any_call(
+            "Material ID 1 not found in matdb. Available material IDs: ['1']. Skipping mass calculation."
+        )
+        mock_logger.warning.assert_any_call(
+            "Material ID 2 not found in matdb. Available material IDs: ['1']. Skipping mass calculation."
+        )

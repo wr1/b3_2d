@@ -25,26 +25,26 @@ def plot_bom_spanwise(output_dir: str, output_file: str, matdb: dict = None):
     if not data_list:
         logger.warning("No valid BOM data found")
         return
-    
+
     z_vals = [d[0] for d in data_list]
     total_areas = [d[1]["total_area"] for d in data_list]
     areas_per_material = [d[1]["areas_per_material"] for d in data_list]
-    
+
     # Collect all material IDs
     all_mat_ids = set()
     for apm in areas_per_material:
         all_mat_ids.update(apm.keys())
     all_mat_ids = sorted(all_mat_ids)
-    
+
     # Build ID to name mapping
     id_to_name = {}
     if matdb:
         for name, props in matdb.items():
-            if 'id' in props:
-                id_to_name[props['id']] = name
-    
+            if "id" in props:
+                id_to_name[props["id"]] = name
+
     fig, axes = plt.subplots(2, 1, figsize=(12, 8))
-    
+
     # Subplot 1: Areas
     axes[0].plot(z_vals, total_areas, label="Total Area", marker="o")
     for mat_id in all_mat_ids:
@@ -56,7 +56,7 @@ def plot_bom_spanwise(output_dir: str, output_file: str, matdb: dict = None):
     axes[0].legend()
     axes[0].set_title("Areas along Blade Span")
     axes[0].grid(True)
-    
+
     # Subplot 2: Masses (if available)
     has_mass = any("total_mass" in d[1] for d in data_list)
     if has_mass:
@@ -66,16 +66,25 @@ def plot_bom_spanwise(output_dir: str, output_file: str, matdb: dict = None):
         for mat_id in all_mat_ids:
             mat_masses = [mpm.get(mat_id, 0) for mpm in masses_per_material]
             name = id_to_name.get(mat_id, f"ID {mat_id}")
-            axes[1].plot(z_vals, mat_masses, label=f"{name} (ID {mat_id}) Mass", marker="s")
+            axes[1].plot(
+                z_vals, mat_masses, label=f"{name} (ID {mat_id}) Mass", marker="s"
+            )
         axes[1].set_xlabel("Section ID")
         axes[1].set_ylabel("Mass")
         axes[1].legend()
         axes[1].set_title("Masses along Blade Span")
         axes[1].grid(True)
     else:
-        axes[1].text(0.5, 0.5, "No mass data available", ha="center", va="center", transform=axes[1].transAxes)
+        axes[1].text(
+            0.5,
+            0.5,
+            "No mass data available",
+            ha="center",
+            va="center",
+            transform=axes[1].transAxes,
+        )
         axes[1].set_title("Masses along Blade Span (No Data)")
-    
+
     plt.tight_layout()
     plt.savefig(output_file, dpi=400)
     plt.close()

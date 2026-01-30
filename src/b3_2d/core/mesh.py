@@ -82,9 +82,7 @@ def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
     te = sort_points_by_y(
         section_mesh.threshold(value=(min_panel_id, min_panel_id), scalars="panel_id")
     )
-    section = section_mesh.threshold(
-        value=(0, panel_ids.max()), scalars="panel_id"
-    )
+    section = section_mesh.threshold(value=(0, panel_ids.max()), scalars="panel_id")
     section_bb = bb_size(section)
     te_bb = bb_size(te)
     if te_bb > 0.03 * section_bb:
@@ -165,7 +163,7 @@ def define_skins_and_webs(
     # Webs
     web_definition = {}
     n_webs = len(web_data)
-    web_names = [f"web{i+1}" for i in range(n_webs)]
+    web_names = [f"web{i + 1}" for i in range(n_webs)]
     for idx, web_name in enumerate(web_names):
         thicknesses = web_thicknesses[idx]
         materials = web_materials[idx]
@@ -190,7 +188,9 @@ def define_skins_and_webs(
         web_definition[web_name] = Web(
             coord_input=points, plies=plies, normal_ref=normal_ref
         )
-        logger.info(f"Defined web {web_name}: {len(points)} points, {len(plies)} plies, normal_ref={normal_ref}")
+        logger.info(
+            f"Defined web {web_name}: {len(points)} points, {len(plies)} plies, normal_ref={normal_ref}"
+        )
     return skins, web_definition
 
 
@@ -201,8 +201,7 @@ def log_thicknesses(skins: dict, web_definition: dict) -> None:
         thickness = skin.thickness.array
         if thickness:
             logger.info(
-                f"Skin {skin_name}: min {min(thickness):.3f}, "
-                f"max {max(thickness):.3f}"
+                f"Skin {skin_name}: min {min(thickness):.3f}, max {max(thickness):.3f}"
             )
     logger.info(f"Assigned thickness arrays for webs: {list(web_definition.keys())}")
     for web_name, web in web_definition.items():
@@ -240,7 +239,7 @@ def process_single_section(
     result["created_files"].append(section_log_file)
     section_file_handler = logging.FileHandler(section_log_file)
     section_file_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(levelname)s:%(name)s:%(lineno)d: %(message)s')
+    formatter = logging.Formatter("%(levelname)s:%(name)s:%(lineno)d: %(message)s")
     section_file_handler.setFormatter(formatter)
     logger.setLevel(logging.INFO)
     logger.propagate = False
@@ -287,7 +286,9 @@ def process_single_section(
             plot_filename=None,
             vtk=vtk_output_file,
         )
-        logger.info(f"AirfoilMesh created with {len(skins)} skins and {len(web_definition)} webs")
+        logger.info(
+            f"AirfoilMesh created with {len(skins)} skins and {len(web_definition)} webs"
+        )
         mesh_result = generate_mesh(mesh)
         logger.info(f"Mesh generation completed, result type: {type(mesh_result)}")
         if mesh.vtk:
@@ -295,7 +296,9 @@ def process_single_section(
             logger.info(f"VTK file saved to {vtk_output_file}")
             # Debug: load and inspect VTK
             loaded_mesh = pv.read(vtk_output_file)
-            logger.info(f"Loaded VTK: {loaded_mesh.n_cells} cells, {loaded_mesh.n_points} points")
+            logger.info(
+                f"Loaded VTK: {loaded_mesh.n_cells} cells, {loaded_mesh.n_points} points"
+            )
             if "material_id" in loaded_mesh.cell_data:
                 unique_mats = np.unique(loaded_mesh.cell_data["material_id"])
                 logger.info(f"Unique material_ids in VTK: {unique_mats}")

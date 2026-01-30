@@ -185,10 +185,10 @@ def post_command(
     if matdb_file:
         with open(matdb_file, "r") as f:
             matdb = json.load(f)
-    
+
     bom_plot_file = Path(output_dir) / "bom_spanwise.png"
     plot_bom_spanwise(output_dir, str(bom_plot_file), matdb)
-    
+
     anba_plot_file = Path(output_dir) / "anba_spanwise.png"
     plot_span_anba(output_dir, str(anba_plot_file))
 

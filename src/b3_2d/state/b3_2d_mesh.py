@@ -3,7 +3,6 @@ from pathlib import Path
 from rich.table import Table
 from rich.console import Console
 import pyvista as pv
-import numpy as np
 from statesman import Statesman
 from statesman.core.base import ManagedFile
 from ..core.mesh import process_vtp_multi_section

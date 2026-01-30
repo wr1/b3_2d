@@ -18,7 +18,9 @@ class B32dPostStep(Statesman):
 
     def _execute(self):
         """Execute the postprocessing step."""
-        self.logger.info("Executing B32dPostStep: Postprocessing 2D meshes and ANBA results.")
+        self.logger.info(
+            "Executing B32dPostStep: Postprocessing 2D meshes and ANBA results."
+        )
         config_dir = Path(self.config_path).parent
         workdir = config_dir / self.config["workdir"]
         output_dir = workdir / "b3_2d"
@@ -31,7 +33,9 @@ class B32dPostStep(Statesman):
         if bom_plot_file.exists():
             self.logger.info(f"BOM plot saved to {bom_plot_file}")
         else:
-            self.logger.warning(f"BOM plot not generated (no BOM data found): {bom_plot_file}")
+            self.logger.warning(
+                f"BOM plot not generated (no BOM data found): {bom_plot_file}"
+            )
 
         # Plot ANBA spanwise if data exists
         anba_plot_file = output_dir / "anba_spanwise.png"
@@ -40,6 +44,8 @@ class B32dPostStep(Statesman):
         if anba_plot_file.exists():
             self.logger.info(f"ANBA plot saved to {anba_plot_file}")
         else:
-            self.logger.warning(f"ANBA plot not generated (no ANBA data found): {anba_plot_file}")
+            self.logger.warning(
+                f"ANBA plot not generated (no ANBA data found): {anba_plot_file}"
+            )
 
         self.logger.info("Postprocessing completed.")
