@@ -102,6 +102,7 @@ def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
             continue
         web_points_2d = web.points[:, :2].tolist()
         web_data.append((web_points_2d, web))
+        logger.info(f"Web for panel_id={pid}: {len(web_points_2d)} points")
     logger.info(f"Extracted {len(web_data)} webs with panel_ids: {web_panel_ids}")
     return points_2d, web_data, airfoil
 
@@ -189,6 +190,7 @@ def define_skins_and_webs(
         web_definition[web_name] = Web(
             coord_input=points, plies=plies, normal_ref=normal_ref
         )
+        logger.info(f"Defined web {web_name}: {len(points)} points, {len(plies)} plies, normal_ref={normal_ref}")
     return skins, web_definition
 
 
@@ -285,10 +287,20 @@ def process_single_section(
             plot_filename=None,
             vtk=vtk_output_file,
         )
+        logger.info(f"AirfoilMesh created with {len(skins)} skins and {len(web_definition)} webs")
         mesh_result = generate_mesh(mesh)
+        logger.info(f"Mesh generation completed, result type: {type(mesh_result)}")
         if mesh.vtk:
             save_mesh_to_vtk(mesh_result, mesh, mesh.vtk)
             logger.info(f"VTK file saved to {vtk_output_file}")
+            # Debug: load and inspect VTK
+            loaded_mesh = pv.read(vtk_output_file)
+            logger.info(f"Loaded VTK: {loaded_mesh.n_cells} cells, {loaded_mesh.n_points} points")
+            if "material_id" in loaded_mesh.cell_data:
+                unique_mats = np.unique(loaded_mesh.cell_data["material_id"])
+                logger.info(f"Unique material_ids in VTK: {unique_mats}")
+            else:
+                logger.warning("No material_id in VTK cell_data")
             result["created_files"].append(vtk_output_file)
         mesh_file = os.path.join(section_dir, "mesh.pck")
         with open(mesh_file, "wb") as f:

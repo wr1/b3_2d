@@ -1,5 +1,6 @@
 """Programmatic example for 2D meshing using b3_2d with 3-web configuration."""
 
+import pyvista as pv
 from pathlib import Path
 from b3_2d.core.mesh import process_vtp_multi_section
 

@@ -1,5 +1,6 @@
 """Programmatic example for 2D meshing using b3_2d."""
 
+import pyvista as pv
 from b3_2d.core.mesh import process_vtp_multi_section
 
 # Example: Process a VTP file for multi-section meshing
