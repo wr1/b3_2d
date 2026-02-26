@@ -1,6 +1,5 @@
 """Mesh utility functions for b3_2d."""
 
-import numpy as np
 import pyvista as pv
 
 

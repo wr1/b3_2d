@@ -28,6 +28,7 @@ except ImportError:
     compute_bom = None
 
 
+@pytest.mark.skipif(bb_size is None, reason="cgfoil not available")
 class TestMeshUtilities:
     def test_bb_size(self, simple_mock_mesh):
         """Test bounding box size calculation."""
@@ -62,6 +63,9 @@ class TestMeshUtilities:
         assert sorted_mesh.n_points == simple_mock_mesh.n_points
 
 
+@pytest.mark.skipif(
+    extract_airfoil_and_web_points is None, reason="cgfoil not available"
+)
 class TestExtractAirfoilAndWebPoints:
     def test_extract_airfoil_and_web_points(self, mock_mesh_with_data):
         """Test airfoil and web extraction."""
@@ -88,6 +92,9 @@ class TestExtractAirfoilAndWebPoints:
         assert len(points_2d) > 0
 
 
+@pytest.mark.skipif(
+    get_thickness_and_material_arrays is None, reason="cgfoil not available"
+)
 class TestThicknessAndMaterials:
     def test_get_thickness_and_material_arrays(self, mock_mesh_with_data):
         """Test thickness and material array extraction."""
@@ -100,11 +107,10 @@ class TestThicknessAndMaterials:
         assert all("thickness" in k for k in thicknesses)
 
 
+@pytest.mark.skipif(compute_bom is None, reason="cgfoil not available")
 class TestBomCalculation:
     def test_compute_bom_basic(self):
         """Test basic BOM computation without matdb."""
-        if compute_bom is None:
-            pytest.skip("BOM function not available")
         mock_mesh = MagicMock()
         mock_mesh.cell_data = {
             "Area": np.array([1.0, 2.0, 3.0]),
@@ -116,8 +122,6 @@ class TestBomCalculation:
 
     def test_compute_bom_with_mass(self):
         """Test BOM computation with mass using matdb."""
-        if compute_bom is None:
-            pytest.skip("BOM function not available")
         mock_mesh = MagicMock()
         mock_mesh.cell_data = {
             "Area": np.array([1.0, 2.0, 3.0]),
@@ -138,8 +142,6 @@ class TestBomCalculation:
 
     def test_compute_bom_missing_data(self):
         """Test BOM computation with missing data."""
-        if compute_bom is None:
-            pytest.skip("BOM function not available")
         mock_mesh = MagicMock()
         mock_mesh.cell_data = {}
         result = compute_bom(mock_mesh)
@@ -148,6 +150,7 @@ class TestBomCalculation:
 
 @patch("logging.getLogger")
 @patch("b3_2d.core.mesh.os.path.exists")
+@pytest.mark.skipif(process_single_section is None, reason="cgfoil not available")
 class TestProcessSingleSection:
     def test_process_single_section_file_not_found(self, mock_exists, mock_get_logger):
         """Test when VTP file doesn't exist (via pv.read error handling)."""
@@ -172,6 +175,7 @@ class TestProcessSingleSection:
             assert isinstance(result["created_files"], list)
 
 
+@pytest.mark.skipif(process_vtp_multi_section is None, reason="cgfoil not available")
 class TestProcessVtpMultiSection:
     @patch("pyvista.read")
     def test_process_vtp_no_section_id(self, mock_pv_read):
@@ -193,6 +197,7 @@ class TestProcessVtpMultiSection:
             pass  # Expected
 
 
+@pytest.mark.skipif(bb_size is None, reason="cgfoil not available")
 class TestIntegrationFunctions:
     def test_basic_function_imports(self):
         """Test all functions can be imported."""

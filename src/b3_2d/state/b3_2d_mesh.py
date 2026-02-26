@@ -55,13 +55,20 @@ class B32dStep(Statesman):
         table.add_column("Errors")
         table.add_column("Path")
         table.add_column("Created Files")
+        table.add_column("VTK")
+        table.add_column("ANBA")
         for r in results:
+            section_dir = Path(r["output_dir"])
+            vtk_exists = (section_dir / "output.vtk").exists()
+            anba_exists = (section_dir / "anba.json").exists()
             table.add_row(
                 str(r["section_id"]),
                 str(r["success"]),
                 "; ".join(r["errors"]),
                 r["output_dir"],
                 ", ".join([Path(f).name for f in r["created_files"]]),
+                "✓" if vtk_exists else "✗",
+                "✓" if anba_exists else "✗",
             )
         console.print(table)
         self.logger.info(f"2D meshing completed, outputs in {output_dir}")

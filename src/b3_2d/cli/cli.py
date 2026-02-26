@@ -4,9 +4,6 @@ import logging
 from rich.logging import RichHandler
 from treeparse import cli, group
 
-import pyvista as pv
-import json
-from pathlib import Path
 
 from .commands.mesh import mesh_cmd
 from .commands.plot import plot_cmd

@@ -76,7 +76,7 @@ def test_post_command_help(capsys):
     assert "Run postprocessing plots for BOM and ANBA" in captured.out
 
 
-@patch("b3_2d.core.mesh.process_vtp_multi_section")
+@patch("b3_2d.cli.commands.mesh.process_vtp_multi_section")
 def test_mesh_command(mock_process):
     """Test mesh command execution."""
     sys.argv = [
@@ -93,10 +93,15 @@ def test_mesh_command(mock_process):
     mock_process.assert_called_with("test.vtp", "out", 2)
 
 
-@patch("b3_2d.core.plotting.plot_mesh")
+@patch("b3_2d.cli.commands.plot.plot_mesh")
 @patch("pyvista.read")
 def test_plot_command(mock_pv_read, mock_plot):
     """Test plot command execution."""
+    import pyvista as pv
+
+    mock_pv_read.return_value = pv.PolyData(
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0]], [[0, 1, 2]]
+    )
     mock_mesh = mock_pv_read.return_value
     sys.argv = [
         "b3-2d",
@@ -115,13 +120,13 @@ def test_plot_command(mock_pv_read, mock_plot):
     )
 
 
-@patch("subprocess.run")
+@patch("b3_2d.cli.commands.anba_all.subprocess.run")
 @patch("shutil.which")
-@patch("pathlib.Path")
+@patch("b3_2d.cli.commands.anba_all.Path")
 def test_anba_all_command(mock_path_class, mock_which, mock_subprocess):
     """Test anba all command execution."""
     mock_path = MagicMock()
-    mock_path.glob.return_value = ["file"]
+    mock_path.glob.return_value = ["section_1/anba.json"]
     mock_path_class.return_value = mock_path
     mock_which.return_value = "conda"
     mock_subprocess.return_value = MagicMock(
@@ -139,7 +144,7 @@ def test_anba_all_command(mock_path_class, mock_which, mock_subprocess):
     assert mock_subprocess.called
 
 
-@patch("subprocess.run")
+@patch("b3_2d.cli.commands.anba_single.subprocess.run")
 def test_anba_single_command(mock_subprocess):
     """Test anba single command execution."""
     mock_subprocess.return_value = MagicMock(returncode=0, stdout="output", stderr="")
@@ -155,15 +160,23 @@ def test_anba_single_command(mock_subprocess):
     assert mock_subprocess.called
 
 
-@patch("pathlib.Path.exists", return_value=True)
+@patch("b3_2d.cli.commands.anba_plot.Path")
 @patch("builtins.open")
 @patch("b3_2d.cli.cli.json.load")
 @patch("pyvista.read")
-@patch("b3_2d.core.plotting.plot_section_anba")
-def test_anba_plot_command(mock_plot, mock_pv_read, mock_json, mock_open, mock_exists):
+@patch("b3_2d.cli.commands.anba_plot.plot_section_anba")
+def test_anba_plot_command(
+    mock_plot, mock_pv_read, mock_json, mock_open, mock_path_class
+):
     """Test anba plot command execution."""
+    import numpy as np
+
     mock_open.return_value = MagicMock()
     mock_mesh = mock_pv_read.return_value
+    mock_mesh.points = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    mock_mesh.cells = np.array([3, 0, 1, 2])
+    mock_mesh.cell_data = {"material_id": [1]}
+    mock_mesh.bounds = [0, 1, 0, 1, 0, 0]
     mock_data = {
         "mass_center": [0, 0],
         "shear_center": [0, 0],
@@ -171,6 +184,9 @@ def test_anba_plot_command(mock_plot, mock_pv_read, mock_json, mock_open, mock_e
         "principal_angle": 0,
     }
     mock_json.return_value = mock_data
+    mock_path = MagicMock()
+    mock_path.exists.return_value = True
+    mock_path_class.return_value = mock_path
     sys.argv = [
         "b3-2d",
         "anba",
@@ -184,7 +200,7 @@ def test_anba_plot_command(mock_plot, mock_pv_read, mock_json, mock_open, mock_e
     mock_plot.assert_called_with(mock_mesh, mock_data, "plot.png")
 
 
-@patch("b3_2d.core.span_plotting.plot_span_anba")
+@patch("b3_2d.cli.commands.span_plot.plot_span_anba")
 def test_span_command(mock_plot_span):
     """Test span command execution."""
     sys.argv = [
@@ -199,8 +215,8 @@ def test_span_command(mock_plot_span):
     mock_plot_span.assert_called_with("out", "span.png")
 
 
-@patch("b3_2d.core.bom_plotting.plot_bom_spanwise")
-@patch("b3_2d.core.span_plotting.plot_span_anba")
+@patch("b3_2d.cli.commands.post.plot_bom_spanwise")
+@patch("b3_2d.cli.commands.post.plot_span_anba")
 @patch("builtins.open")
 @patch("b3_2d.cli.cli.json.load")
 def test_post_command(mock_json_load, mock_open, mock_plot_anba, mock_plot_bom):

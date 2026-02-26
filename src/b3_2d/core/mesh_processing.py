@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 import pyvista as pv
 from rich.progress import Progress
-from cgfoil.core.main import generate_mesh
+from cgfoil.core.generate_mesh import generate_mesh
 from cgfoil.models import AirfoilMesh
 from cgfoil.cli.export import export_mesh_to_anba
 from cgfoil.utils.io import save_mesh_to_vtk

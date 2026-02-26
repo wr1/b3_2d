@@ -65,17 +65,43 @@ def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
 
 
 def get_thickness_and_material_arrays(mesh: pv.PolyData) -> tuple:
-    """Get thickness and material arrays from mesh."""
-    mesh_point = mesh.cell_data_to_point_data(pass_cell_data=True)
-    thickness_keys = [
-        k for k in mesh_point.point_data.keys() if re.match(r"ply_.*_thickness", k)
-    ]
+    """Get thickness and material arrays from mesh.
+
+    Snaps averaged point data for thicknesses back to original discrete cell levels
+    to eliminate averaging smearing (e.g. artificial 0.004 values between 0.0 and 0.008).
+    Materials stay cell-based (max value per panel).
+    """
+    # Thickness keys from ORIGINAL cell_data (discrete levels)
+    thickness_keys = [k for k in mesh.cell_data if re.match(r"ply_.*_thickness", k)]
     thickness_keys.sort(key=lambda x: int(re.search(r"ply_(\d+)", x).group(1)))
     material_keys = [k.replace("_thickness", "_material") for k in thickness_keys]
+
     logger.info(f"Thickness keys: {thickness_keys}")
     logger.info(f"Material keys: {material_keys}")
-    logger.info(f"Available point data keys: {list(mesh_point.point_data.keys())}")
-    thicknesses = {k: mesh_point.point_data[k] for k in thickness_keys}
+    logger.info(f"Available cell data keys: {list(mesh.cell_data.keys())}")
+
+    mesh_point = mesh.cell_data_to_point_data(pass_cell_data=True)
+
+    thicknesses = {}
+    for k in thickness_keys:
+        cell_thick = mesh.cell_data[k]
+        # Unique original levels (rounded to remove float noise)
+        unique_levels = np.sort(np.unique(np.round(cell_thick, decimals=8)))
+        point_thick = mesh_point.point_data[k]
+
+        # Snap every nodal value to nearest original discrete level
+        snapped = np.array(
+            [unique_levels[np.argmin(np.abs(unique_levels - v))] for v in point_thick]
+        )
+
+        unique, counts = np.unique(snapped, return_counts=True)
+        logger.info(
+            f"{k} after snap (no smear): len={len(snapped)}, "
+            f"unique={dict(zip(unique.tolist(), counts.tolist()))}"
+        )
+
+        thicknesses[k] = snapped.tolist()
+
     materials = {k: mesh.cell_data[k] for k in material_keys}
     return thicknesses, materials
 
