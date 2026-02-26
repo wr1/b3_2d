@@ -3,6 +3,8 @@
 import pyvista as pv
 from pathlib import Path
 import json
+from rich.table import Table
+from rich.console import Console
 from b3_2d.core.mesh import process_vtp_multi_section
 from b3_2d.core.bom import compute_bom
 from b3_2d.core.bom_plotting import plot_bom_spanwise
@@ -80,12 +82,31 @@ else:
     print("ANBA plot not generated (no ANBA data available)")
 
 # Verify VTK files for successful sections
-print("\nVerifying VTK meshes:")
+console = Console()
+table = Table(title="VTK Mesh Verification")
+table.add_column("Section ID", justify="right")
+table.add_column("Output Present")
+table.add_column("VTK Path")
+table.add_column("N Points", justify="right")
+table.add_column("N Cells", justify="right")
 for r in results:
     if r["success"]:
         vtk_file = Path(r["output_dir"]) / "output.vtk"
         if vtk_file.exists():
             mesh = pv.read(str(vtk_file))
-            print(
-                f"  Section {r['section_id']}: {mesh.n_points} points, {mesh.n_cells} cells"
+            table.add_row(
+                str(r["section_id"]),
+                "Yes",
+                str(vtk_file.resolve()),
+                str(mesh.n_points),
+                str(mesh.n_cells),
             )
+        else:
+            table.add_row(
+                str(r["section_id"]),
+                "No",
+                "N/A",
+                "N/A",
+                "N/A",
+            )
+console.print(table)

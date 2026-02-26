@@ -7,13 +7,9 @@ import matplotlib.pyplot as plt
 from typing import Optional
 import logging
 
+from .mesh_utils import bb_size
+
 logger = logging.getLogger(__name__)
-
-
-def bb_size(mesh: pv.PolyData) -> float:
-    """Compute bounding box size."""
-    bounds = mesh.bounds
-    return ((bounds[1] - bounds[0]) ** 2 + (bounds[3] - bounds[2]) ** 2) ** 0.5
 
 
 def plot_mesh(

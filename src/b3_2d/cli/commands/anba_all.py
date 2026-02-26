@@ -34,6 +34,7 @@ def anba_all_command(
     conda_command = [conda_path, "run", "-n", anba_env, "anba4-run", "-i"]
     for anba_file in anba_files:
         conda_command.append(str(anba_file))
+    logger.info(f"Running ANBA4 command: {' '.join(conda_command)}")
     env_vars = {
         **os.environ.copy(),
         "OPENBLAS_NUM_THREADS": "1",

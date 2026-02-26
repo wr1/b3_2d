@@ -3,44 +3,21 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "b3_2d"
-version = "0.1.1"
-description = "2D meshing module for b3m using cgfoil"
-authors = [{name = "wr1", email = "8971152+wr1@users.noreply.github.com"}]
-readme = "README.md"
-requires-python = ">=3.11"
+name = "b3-2d"
+version = "0.1.0"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy",
     "pyvista",
-    "cgfoil",
-    "pydantic",
-    "treeparse",
     "rich",
+    "treeparse",
+    "cgfoil",
     "statesman",
-]
-
-[project.optional-dependencies]
-tests = [
-    "pytest",
-    "pytest-cov",
-    "ruff",
+    "matplotlib",
+    "numpy",
 ]
 
 [project.scripts]
-b3-2d = "b3_2d.cli.cli:main"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/b3_2d"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.coverage.run]
-source = ["src/b3_2d"]
-
-[tool.pytest.ini_options]
-addopts = "--cov=src/b3_2d --cov-report=term-missing"
-testpaths = ["tests", "examples"]
+b3-2d = "b3_2d.cli:main"
 
 [tool.uv.sources]
 cgfoil = { workspace = true }

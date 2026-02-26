@@ -26,6 +26,7 @@ def anba_single_command(
         logger.error(f"Conda env {anba_env} not found")
         return
     conda_command = [conda_path, "run", "-n", anba_env, "anba4-run", "-i", json_file]
+    logger.info(f"Running ANBA4 command: {' '.join(conda_command)}")
     env_vars = {
         **os.environ.copy(),
         "OPENBLAS_NUM_THREADS": "1",
