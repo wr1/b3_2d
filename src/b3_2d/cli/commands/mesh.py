@@ -1,7 +1,6 @@
 """Mesh command for CLI."""
 
 from treeparse import command, option
-from ...core.mesh import process_vtp_multi_section
 
 
 def mesh_command(
@@ -15,6 +14,10 @@ def mesh_command(
 
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+    try:
+        from ...core.mesh import process_vtp_multi_section
+    except ImportError:
+        raise ImportError("cgfoil not available")
     process_vtp_multi_section(vtp_file, output_dir, num_processes)
 
 
