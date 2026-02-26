@@ -5,6 +5,8 @@ from pathlib import Path
 from statesman import Statesman
 from statesman.core.base import ManagedFile
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+from rich.console import Console
 
 
 class B32dAnbaStep(Statesman):
@@ -78,3 +80,35 @@ class B32dAnbaStep(Statesman):
         else:
             self.logger.info("ANBA4 completed with errors")
         self.logger.info("ANBA4 processing completed")
+        # Create table with file existence
+        console = Console()
+        table = Table(title="Section Processing Results")
+        table.add_column("Section ID", justify="right")
+        table.add_column("Log")
+        table.add_column("VTK")
+        table.add_column("ANBA")
+        table.add_column("ANBA Out")
+        table.add_column("Unit VTU")
+        table.add_column("Plot PNG")
+        table.add_column("BOM")
+        section_dirs = sorted(output_dir.glob("section_*/"))
+        for section_dir in section_dirs:
+            sid = int(section_dir.name.split("_")[1])
+            log_exists = (section_dir / "2dmesh.log").exists()
+            vtk_exists = (section_dir / "output.vtk").exists()
+            anba_exists = (section_dir / "anba.json").exists()
+            anba_out_exists = (section_dir / "anba_out.json").exists()
+            unit_vtu_exists = (section_dir / "anba_out_unit.vtu").exists()
+            plot_png_exists = (section_dir / "anba_plot.png").exists()
+            bom_exists = (section_dir / "bom.json").exists()
+            table.add_row(
+                str(sid),
+                "✓" if log_exists else "✗",
+                "✓" if vtk_exists else "✗",
+                "✓" if anba_exists else "✗",
+                "✓" if anba_out_exists else "✗",
+                "✓" if unit_vtu_exists else "✗",
+                "✓" if plot_png_exists else "✗",
+                "✓" if bom_exists else "✗",
+            )
+        console.print(table)
