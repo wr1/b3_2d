@@ -19,4 +19,3 @@ except ImportError:
     define_skins_and_webs = None
     log_thicknesses = None
     compute_bom = None
-
