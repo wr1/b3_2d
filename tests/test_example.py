@@ -53,9 +53,6 @@ def test_mesh_example(example_output_dir):
         # At least log file should be created
         assert any("2dmesh.log" in Path(f).name for f in result["created_files"])
 
-    successful = sum(1 for r in results if r["success"])
-    print(f"Example processed {len(results)} sections: {successful} successful")
-
 
 def test_mesh_3web_example(example_output_dir):
     """Test 3-web mesh example."""
@@ -159,7 +156,13 @@ def test_full_example_pipeline(tmp_path):
         output_dir = tmp_path / Path(vtp_file).stem
         output_dir.mkdir()
 
-        results = process_vtp_multi_section(str(vtp_file), str(output_dir))
+        try:
+            results = process_vtp_multi_section(str(vtp_file), str(output_dir))
+        except ImportError as e:
+            if "cgfoil not available" in str(e):
+                pytest.skip("cgfoil not available")
+            else:
+                raise
 
         assert len(results) > 0
         successful = [r for r in results if r["success"]]

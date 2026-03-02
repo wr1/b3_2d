@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 import pyvista as pv
 from rich.progress import Progress
-from cgfoil.core.generate_mesh import generate_mesh
+from cgfoil.core.main import generate_mesh
 from cgfoil.models import AirfoilMesh
 from cgfoil.cli.export import export_mesh_to_anba
 from cgfoil.utils.io import save_mesh_to_vtk
@@ -151,6 +151,7 @@ def process_vtp_multi_section(
     logger.info(f"Found {total_sections} unique section_ids: {np.array(unique_ids)}")
     if num_processes is None:
         num_processes = multiprocessing.cpu_count()
+    multiprocessing.set_start_method('spawn', force=True)
     with Progress() as progress:
         spinner = progress.add_task("Processing sections...", total=None)
         with multiprocessing.Pool(processes=num_processes) as pool:
