@@ -6,26 +6,16 @@ from unittest.mock import patch, MagicMock
 import pyvista as pv
 import os
 
-try:
-    from b3_2d.core.mesh import (
-        process_vtp_multi_section,
-        process_single_section,
-        extract_airfoil_and_web_points,
-        validate_points,
-        sort_points_by_y,
-        bb_size,
-        get_thickness_and_material_arrays,
-    )
-    from b3_2d.core.bom import compute_bom
-except ImportError:
-    process_vtp_multi_section = None
-    process_single_section = None
-    extract_airfoil_and_web_points = None
-    validate_points = None
-    sort_points_by_y = None
-    bb_size = None
-    get_thickness_and_material_arrays = None
-    compute_bom = None
+from b3_2d.core.mesh import (
+    process_vtp_multi_section,
+    process_single_section,
+    extract_airfoil_and_web_points,
+    validate_points,
+    sort_points_by_y,
+    bb_size,
+    get_thickness_and_material_arrays,
+)
+from b3_2d.core.bom import compute_bom
 
 
 @pytest.mark.skipif(bb_size is None, reason="cgfoil not available")
@@ -149,7 +139,7 @@ class TestBomCalculation:
 
 
 @patch("logging.getLogger")
-@patch("b3_2d.core.mesh.os.path.exists")
+@patch("b3_2d.core.mesh_processing.os.path.exists")
 @pytest.mark.skipif(process_single_section is None, reason="cgfoil not available")
 class TestProcessSingleSection:
     def test_process_single_section_file_not_found(self, mock_exists, mock_get_logger):
@@ -208,7 +198,7 @@ class TestIntegrationFunctions:
 
 @pytest.mark.skipif(process_vtp_multi_section is None, reason="cgfoil not available")
 class TestCgfoilIntegration:
-    @patch("b3_2d.core.mesh.Progress")
+    @patch("b3_2d.core.mesh_processing.Progress")
     @patch("multiprocessing.Pool")
     @patch("pyvista.read")
     def test_pool_called_with_correct_args(

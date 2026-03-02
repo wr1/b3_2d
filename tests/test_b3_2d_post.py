@@ -2,19 +2,11 @@
 
 from unittest.mock import patch, MagicMock
 
-try:
-    from b3_2d.state.b3_2d_post import B32dPostStep
-except ImportError:
-    B32dPostStep = None
+from b3_2d.state.b3_2d_post import B32dPostStep
 
 
 def test_b32d_post_step():
     """Test B32dPostStep execution."""
-    if B32dPostStep is None:
-        import pytest
-
-        pytest.skip("B32dPostStep not available")
-
     with patch(
         "b3_2d.state.b3_2d_post.B32dPostStep.load_config",
         return_value={"workdir": "work", "matdb": {}},

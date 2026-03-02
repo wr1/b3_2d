@@ -14,10 +14,8 @@ def mesh_command(
 
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    try:
-        from ...core.mesh import process_vtp_multi_section
-    except ImportError:
-        raise ImportError("cgfoil not available")
+    from ...core.mesh import process_vtp_multi_section
+
     process_vtp_multi_section(vtp_file, output_dir, num_processes)
 
 

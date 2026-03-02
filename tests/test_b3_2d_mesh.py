@@ -3,20 +3,12 @@
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-try:
-    from b3_2d.state.b3_2d_mesh import B32dStep
-    from b3_2d.core.bom import compute_bom
-except ImportError:
-    B32dStep = None
-    compute_bom = None
+from b3_2d.state.b3_2d_mesh import B32dStep
+from b3_2d.core.bom import compute_bom
 
 
 def test_b32d_step():
     """Test B32dStep execution."""
-    if B32dStep is None:
-        import pytest
-
-        pytest.skip("Statesman not available")
     with patch(
         "b3_2d.state.b3_2d_mesh.B32dStep.load_config",
         return_value={"workdir": "work", "num_processes": 4},
@@ -53,10 +45,6 @@ def test_b32d_step():
 
 def test_compute_bom():
     """Test BOM computation."""
-    if compute_bom is None:
-        import pytest
-
-        pytest.skip("Function not available")
     mock_mesh = MagicMock()
     mock_mesh.cell_data = {
         "Area": np.array([1.0, 2.0, 3.0]),
@@ -69,10 +57,6 @@ def test_compute_bom():
 
 def test_compute_bom_missing_data():
     """Test BOM computation with missing data."""
-    if compute_bom is None:
-        import pytest
-
-        pytest.skip("Function not available")
     mock_mesh = MagicMock()
     mock_mesh.cell_data = {}
     result = compute_bom(mock_mesh)
@@ -81,10 +65,6 @@ def test_compute_bom_missing_data():
 
 def test_compute_bom_with_mass():
     """Test BOM computation with mass using matdb."""
-    if compute_bom is None:
-        import pytest
-
-        pytest.skip("Function not available")
     mock_mesh = MagicMock()
     mock_mesh.cell_data = {
         "Area": np.array([1.0, 2.0, 3.0]),
@@ -103,10 +83,6 @@ def test_compute_bom_with_mass():
 
 def test_compute_bom_with_partial_matdb():
     """Test BOM computation with partial matdb (missing density for some materials)."""
-    if compute_bom is None:
-        import pytest
-
-        pytest.skip("Function not available")
     mock_mesh = MagicMock()
     mock_mesh.cell_data = {
         "Area": np.array([1.0, 2.0, 3.0]),
@@ -129,10 +105,6 @@ def test_compute_bom_with_partial_matdb():
 
 def test_compute_bom_with_wrong_key_matdb():
     """Test BOM computation with matdb having wrong key type."""
-    if compute_bom is None:
-        import pytest
-
-        pytest.skip("Function not available")
     mock_mesh = MagicMock()
     mock_mesh.cell_data = {
         "Area": np.array([1.0, 2.0, 3.0]),

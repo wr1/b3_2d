@@ -5,6 +5,8 @@ import pytest
 from pathlib import Path
 import pyvista as pv
 
+from b3_2d.core.mesh import process_vtp_multi_section
+
 
 @pytest.fixture(scope="module")
 def example_output_dir(tmp_path_factory):
@@ -17,11 +19,6 @@ def example_output_dir(tmp_path_factory):
 
 def test_mesh_example(example_output_dir):
     """Test that mesh_example.py runs successfully and creates expected outputs."""
-    try:
-        from b3_2d.core.mesh import process_vtp_multi_section
-    except ImportError:
-        pytest.skip("cgfoil not available")
-
     vtp_file = "examples/draped.vtk"
     output_dir = str(example_output_dir / "draped")
 
@@ -56,11 +53,6 @@ def test_mesh_example(example_output_dir):
 
 def test_mesh_3web_example(example_output_dir):
     """Test 3-web mesh example."""
-    try:
-        from b3_2d.core.mesh import process_vtp_multi_section
-    except ImportError:
-        pytest.skip("cgfoil not available")
-
     vtp_file = "examples/draped_3web.vtk"
     output_dir = str(example_output_dir / "draped_3web")
 
@@ -83,11 +75,6 @@ def test_mesh_3web_example(example_output_dir):
 
 def test_example_output_files(example_output_dir):
     """Test specific output files are created correctly."""
-    try:
-        from b3_2d.core.mesh import process_vtp_multi_section
-    except ImportError:
-        pytest.skip("cgfoil not available")
-
     vtp_file = "examples/draped.vtk"
     output_dir = str(example_output_dir / "check_files")
 
@@ -140,11 +127,6 @@ def test_example_programmatic_usage():
 )
 def test_full_example_pipeline(tmp_path):
     """Full end-to-end test with available real data."""
-    try:
-        from b3_2d.core.mesh import process_vtp_multi_section
-    except ImportError:
-        pytest.skip("cgfoil not available")
-
     available_files = []
     for vtp_file in ["examples/draped.vtk", "examples/draped_3web.vtk"]:
         if Path(vtp_file).exists():

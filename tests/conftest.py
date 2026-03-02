@@ -44,10 +44,11 @@ def mock_mesh_with_data(simple_mock_mesh):
     mesh.cell_data["dx"] = np.full(n_cells, 0.1)
     mesh.cell_data["dy"] = np.full(n_cells, 0.05)
 
-    # Add ply data: thicknesses as point_data, materials as cell_data
+    # Add ply data: thicknesses as cell_data (since get_thickness_and_material_arrays looks in cell_data), materials as cell_data
+    # Fixed: thicknesses were incorrectly added to point_data, but function expects them in cell_data
     for i in range(3):
-        mesh.point_data[f"ply_{i}_thickness"] = np.full(
-            mesh.n_points, 0.002 + i * 0.001, dtype=float
+        mesh.cell_data[f"ply_{i}_thickness"] = np.full(
+            n_cells, 0.002 + i * 0.001, dtype=float
         )
         mesh.cell_data[f"ply_{i}_material"] = np.full(n_cells, i + 1, dtype=int)
 
