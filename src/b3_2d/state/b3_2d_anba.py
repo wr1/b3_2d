@@ -91,7 +91,8 @@ class B32dAnbaStep(Statesman):
         table.add_column("Unit VTU")
         table.add_column("Plot PNG")
         table.add_column("BOM")
-        section_dirs = sorted(output_dir.glob("section_*/"))
+        section_dirs = list(output_dir.glob("section_*/"))
+        section_dirs.sort(key=lambda d: int(d.name.split("_")[1]))
         for section_dir in section_dirs:
             sid = int(section_dir.name.split("_")[1])
             log_exists = (section_dir / "2dmesh.log").exists()
