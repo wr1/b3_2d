@@ -109,7 +109,7 @@ def test_example_programmatic_usage():
 
     for example_module in examples_to_test:
         try:
-            module = __import__(example_module.replace(".", ""), fromlist=[""])
+            module = __import__(example_module, fromlist=[""])
             assert hasattr(module, "__file__")
             print(f"✓ {example_module} imports successfully")
         except ImportError as e:

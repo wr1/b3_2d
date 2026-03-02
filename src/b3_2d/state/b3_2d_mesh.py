@@ -32,6 +32,8 @@ class B32dStep(Statesman):
         results = process_vtp_multi_section(
             str(vtp_file), str(output_dir), num_processes, matdb=matdb
         )
+        # Sort results by section_id for ordered display
+        results = sorted(results, key=lambda x: x["section_id"])
         # Compute BOM for successful sections
         bom_sections = []
         for r in results:
