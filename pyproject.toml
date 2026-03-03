@@ -19,5 +19,5 @@ dependencies = [
 [project.scripts]
 b3-2d = "b3_2d.cli:main"
 
-[tool.uv.sources]
-cgfoil = { workspace = true }
+# [tool.uv.sources]
+# cgfoil = { workspace = true }
