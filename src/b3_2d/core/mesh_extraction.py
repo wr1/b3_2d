@@ -2,6 +2,7 @@
 
 import logging
 import re
+import math
 import numpy as np
 import pyvista as pv
 from cgfoil.models import Skin, Web, Ply, Thickness
@@ -123,6 +124,8 @@ def define_skins_and_webs(
     web_data: list,
     web_thicknesses: list,
     web_materials: list,
+    orientations: dict = None,
+    twist: float = 0.0,
 ) -> tuple:
     """Define skins and webs from thicknesses, materials, and points."""
     # Skins
@@ -148,7 +151,10 @@ def define_skins_and_webs(
     # Webs
     web_definition = {}
     n_webs = len(web_data)
-    web_names = [f"web{i + 1}" for i in range(n_webs)]
+    if orientations:
+        web_names = list(orientations.keys())
+    else:
+        web_names = [f"web{i + 1}" for i in range(n_webs)]
     for idx, web_name in enumerate(web_names):
         thicknesses = web_thicknesses[idx]
         materials = web_materials[idx]
@@ -168,8 +174,22 @@ def define_skins_and_webs(
                     material=material,
                 )
             )
-        sign = 1 if idx % 2 == 0 else -1
-        normal_ref = [sign, 0]
+        # Compute normal_ref from orientation
+        if orientations and web_name in orientations:
+            ox, oy, oz = orientations[web_name]
+            # Rotate by -twist around z
+            twist_rad = math.radians(-twist)
+            rx = ox * math.cos(twist_rad) - oy * math.sin(twist_rad)
+            ry = ox * math.sin(twist_rad) + oy * math.cos(twist_rad)
+            normal_ref = [rx, ry]
+            logger.info(f"Web {web_name}: orientation {ox, oy, oz} -> normal_ref {normal_ref} after twist {-twist}")
+            print(f"Web {web_name}: used normal_ref {normal_ref}")
+        else:
+            # Fallback to old logic
+            sign = 1 if idx % 2 == 0 else -1
+            normal_ref = [sign, 0]
+            logger.warning(f"No orientation for {web_name}, using fallback normal_ref {normal_ref}")
+            print(f"Web {web_name}: used fallback normal_ref {normal_ref}")
         web_definition[web_name] = Web(
             coord_input=points, plies=plies, normal_ref=normal_ref
         )

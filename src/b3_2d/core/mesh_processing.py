@@ -28,6 +28,7 @@ def process_single_section(
     vtp_file: str,
     output_base_dir: str,
     matdb: dict = None,
+    orientations: dict = None,
     debug: bool = False,
 ) -> dict:
     """Process a single section."""
@@ -77,12 +78,15 @@ def process_single_section(
             result["success"] = False
             result["errors"].append(msg)
             return result
+        twist = np.unique(section_mesh.cell_data["twist"])[0]
         skins, web_definition = define_skins_and_webs(
             airfoil_thicknesses,
             airfoil_materials,
             web_data,
             web_thicknesses,
             web_materials,
+            orientations,
+            twist,
         )
         log_thicknesses(skins, web_definition)
         vtk_output_file = os.path.join(section_dir, "output.vtk")
@@ -140,6 +144,7 @@ def process_vtp_multi_section(
     output_base_dir: str,
     num_processes: int = None,
     matdb: dict = None,
+    orientations: dict = None,
     debug: bool = False,
 ) -> list[dict]:
     """Process VTP file for all sections using multiprocessing."""
@@ -158,7 +163,7 @@ def process_vtp_multi_section(
             results = pool.starmap(
                 process_single_section,
                 [
-                    (section_id, vtp_file, output_base_dir, matdb, debug)
+                    (section_id, vtp_file, output_base_dir, matdb, orientations, debug)
                     for section_id in unique_ids
                 ],
             )

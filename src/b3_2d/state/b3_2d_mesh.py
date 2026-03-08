@@ -3,8 +3,7 @@ from pathlib import Path
 from rich.table import Table
 from rich.console import Console
 import pyvista as pv
-from statesman import Statesman
-from statesman.core.base import ManagedFile
+from statesman import Statesman, ManagedFile
 from ..core.mesh import process_vtp_multi_section
 from ..core.bom import compute_bom
 
@@ -29,8 +28,24 @@ class B32dStep(Statesman):
         output_dir.mkdir(parents=True, exist_ok=True)
         num_processes = self.config.get("num_processes", None)
         matdb = self.config.get("matdb", {})
+        # Extract web orientations from config
+        webs = self.config.get("structure", {}).get("webs", [])
+        orientations = {}
+        for w in webs:
+            if w.get("mesh", False):
+                name = w["name"]
+                if "reference_web" in w:
+                    # For ribbons, inherit from reference
+                    ref = w["reference_web"]
+                    if ref in orientations:
+                        orientations[name] = orientations[ref]
+                    else:
+                        self.logger.warning(f"Reference web {ref} not found for {name}")
+                        orientations[name] = [0, 1, 0]  # Default
+                else:
+                    orientations[name] = w.get("orientation", [0, 1, 0])
         results = process_vtp_multi_section(
-            str(vtp_file), str(output_dir), num_processes, matdb=matdb
+            str(vtp_file), str(output_dir), num_processes, matdb=matdb, orientations=orientations
         )
         # Sort results by section_id for ordered display
         results = sorted(results, key=lambda x: x["section_id"])

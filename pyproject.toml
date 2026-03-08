@@ -10,14 +10,19 @@ dependencies = [
     "pyvista",
     "rich",
     "treeparse",
-    "cgfoil",
     "statesman",
     "matplotlib",
     "numpy",
+    "pydantic>=2.0",
 ]
 
 [project.scripts]
 b3-2d = "b3_2d.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
 
 # [tool.uv.sources]
 # cgfoil = { workspace = true }

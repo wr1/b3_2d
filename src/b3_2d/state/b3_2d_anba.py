@@ -2,8 +2,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from statesman import Statesman
-from statesman.core.base import ManagedFile
+from statesman import Statesman, ManagedFile
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.console import Console

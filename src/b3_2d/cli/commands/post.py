@@ -14,7 +14,7 @@ def post_command(
     """Run postprocessing plots for BOM and ANBA."""
     import logging
 
-    logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     matdb = {}

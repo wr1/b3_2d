@@ -1,6 +1,5 @@
 from pathlib import Path
-from statesman import Statesman
-from statesman.core.base import ManagedFile
+from statesman import Statesman, ManagedFile
 from ..core.bom_plotting import plot_bom_spanwise
 from ..core.span_plotting import plot_span_anba
 

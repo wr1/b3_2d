@@ -1,5 +1,7 @@
 """Meshing functionality for b3_2d using cgfoil."""
 
+from .mesh_utils import validate_points, sort_points_by_y, bb_size
+
 try:
     from .mesh_processing import process_vtp_multi_section, process_single_section
     from .mesh_extraction import (
