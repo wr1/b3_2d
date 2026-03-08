@@ -25,6 +25,9 @@ def test_mesh_example(example_output_dir):
     if not Path(vtp_file).exists():
         pytest.skip(f"Sample VTP file not found: {vtp_file}")
 
+    if process_vtp_multi_section is None:
+        pytest.skip("cgfoil not available")
+
     try:
         results = process_vtp_multi_section(vtp_file, output_dir)
     except Exception as e:
@@ -59,6 +62,9 @@ def test_mesh_3web_example(example_output_dir):
     if not Path(vtp_file).exists():
         pytest.skip(f"Sample VTP file not found: {vtp_file}")
 
+    if process_vtp_multi_section is None:
+        pytest.skip("cgfoil not available")
+
     try:
         results = process_vtp_multi_section(vtp_file, output_dir)
     except Exception as e:
@@ -80,6 +86,9 @@ def test_example_output_files(example_output_dir):
 
     if not Path(vtp_file).exists():
         pytest.skip("Skipping due to missing draped.vtk")
+
+    if process_vtp_multi_section is None:
+        pytest.skip("cgfoil not available")
 
     try:
         results = process_vtp_multi_section(vtp_file, output_dir)
@@ -137,6 +146,9 @@ def test_full_example_pipeline(tmp_path):
     for vtp_file in available_files:
         output_dir = tmp_path / Path(vtp_file).stem
         output_dir.mkdir()
+
+        if process_vtp_multi_section is None:
+            pytest.skip("cgfoil not available")
 
         try:
             results = process_vtp_multi_section(str(vtp_file), str(output_dir))

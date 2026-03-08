@@ -2,14 +2,14 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from statesman import Statesman, ManagedFile
+from b3_state.core.base import b3_state, ManagedFile
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.console import Console
 
 
-class B32dAnbaStep(Statesman):
-    """Statesman step for running ANBA4 on 2D meshes."""
+class B32dAnbaStep(b3_state):
+    """b3_state step for running ANBA4 on 2D meshes."""
 
     workdir_key = "workdir"
     input_files = [

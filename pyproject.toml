@@ -10,11 +10,13 @@ dependencies = [
     "pyvista",
     "rich",
     "treeparse",
-    "statesman",
+    "b3_state", 
+    "cgfoil", # @ git+https://github.com/wr1/cgfoil.git@dev1",
     "matplotlib",
     "numpy",
     "pydantic>=2.0",
 ]
+#  @ git+https://github.com/wr1/b3_state.git@master",
 
 [project.scripts]
 b3-2d = "b3_2d.cli:main"
@@ -23,6 +25,8 @@ b3-2d = "b3_2d.cli:main"
 dev = [
     "pytest>=9.0.2",
 ]
+[tool.hatch.metadata]
+allow-direct-references = true
 
 # [tool.uv.sources]
 # cgfoil = { workspace = true }

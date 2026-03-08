@@ -3,13 +3,13 @@ from pathlib import Path
 from rich.table import Table
 from rich.console import Console
 import pyvista as pv
-from statesman import Statesman, ManagedFile
+from b3_state.core.base import b3_state, ManagedFile
 from ..core.mesh import process_vtp_multi_section
 from ..core.bom import compute_bom
 
 
-class B32dStep(Statesman):
-    """Statesman step for 2D meshing using cgfoil."""
+class B32dStep(b3_state):
+    """b3_state step for 2D meshing using cgfoil."""
 
     workdir_key = "workdir"
     input_files = [
@@ -45,7 +45,11 @@ class B32dStep(Statesman):
                 else:
                     orientations[name] = w.get("orientation", [0, 1, 0])
         results = process_vtp_multi_section(
-            str(vtp_file), str(output_dir), num_processes, matdb=matdb, orientations=orientations
+            str(vtp_file),
+            str(output_dir),
+            num_processes,
+            matdb=matdb,
+            orientations=orientations,
         )
         # Sort results by section_id for ordered display
         results = sorted(results, key=lambda x: x["section_id"])

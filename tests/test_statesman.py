@@ -1,1 +1,1 @@
-"""Tests for statesman functionality."""
+"""Tests for b3_state functionality."""

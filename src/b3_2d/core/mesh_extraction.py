@@ -182,13 +182,17 @@ def define_skins_and_webs(
             rx = ox * math.cos(twist_rad) - oy * math.sin(twist_rad)
             ry = ox * math.sin(twist_rad) + oy * math.cos(twist_rad)
             normal_ref = [rx, ry]
-            logger.info(f"Web {web_name}: orientation {ox, oy, oz} -> normal_ref {normal_ref} after twist {-twist}")
+            logger.info(
+                f"Web {web_name}: orientation {ox, oy, oz} -> normal_ref {normal_ref} after twist {-twist}"
+            )
             print(f"Web {web_name}: used normal_ref {normal_ref}")
         else:
             # Fallback to old logic
             sign = 1 if idx % 2 == 0 else -1
             normal_ref = [sign, 0]
-            logger.warning(f"No orientation for {web_name}, using fallback normal_ref {normal_ref}")
+            logger.warning(
+                f"No orientation for {web_name}, using fallback normal_ref {normal_ref}"
+            )
             print(f"Web {web_name}: used fallback normal_ref {normal_ref}")
         web_definition[web_name] = Web(
             coord_input=points, plies=plies, normal_ref=normal_ref

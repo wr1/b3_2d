@@ -7,14 +7,15 @@ from b3_2d.state.b3_2d_post import B32dPostStep
 
 def test_b32d_post_step():
     """Test B32dPostStep execution."""
-    with patch(
-        "b3_2d.state.b3_2d_post.B32dPostStep.load_config",
-        return_value={"workdir": "work", "matdb": {}},
-    ), patch("pathlib.Path") as mock_path_class, patch(
-        "b3_2d.state.b3_2d_post.plot_bom_spanwise"
-    ) as mock_plot_bom, patch(
-        "b3_2d.state.b3_2d_post.plot_span_anba"
-    ) as mock_plot_anba:
+    with (
+        patch(
+            "b3_2d.state.b3_2d_post.B32dPostStep.load_config",
+            return_value={"workdir": "work", "matdb": {}},
+        ),
+        patch("pathlib.Path") as mock_path_class,
+        patch("b3_2d.state.b3_2d_post.plot_bom_spanwise") as mock_plot_bom,
+        patch("b3_2d.state.b3_2d_post.plot_span_anba") as mock_plot_anba,
+    ):
         mock_config_path = MagicMock()
         mock_config_path.parent = MagicMock()
         mock_workdir = MagicMock()

@@ -1,11 +1,11 @@
 from pathlib import Path
-from statesman import Statesman, ManagedFile
+from b3_state.core.base import b3_state, ManagedFile
 from ..core.bom_plotting import plot_bom_spanwise
 from ..core.span_plotting import plot_span_anba
 
 
-class B32dPostStep(Statesman):
-    """Statesman step for postprocessing 2D meshes and ANBA results."""
+class B32dPostStep(b3_state):
+    """b3_state step for postprocessing 2D meshes and ANBA results."""
 
     workdir_key = "workdir"
     input_files = [
