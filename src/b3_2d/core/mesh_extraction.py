@@ -55,7 +55,18 @@ def extract_airfoil_and_web_points(section_mesh: pv.PolyData) -> tuple:
     te = sort_points_by_y(section_mesh.threshold(value=(min_panel_id, min_panel_id), scalars="panel_id"))
     section = section_mesh.threshold(value=(0, panel_ids.max()), scalars="panel_id")
     if bb_size(te) > 0.03 * bb_size(section):
+        # Clean cell data to match n_cells before merge
+        for mesh_obj in [section, te]:
+            for key in list(mesh_obj.cell_data.keys()):
+                if len(mesh_obj.cell_data[key]) != mesh_obj.n_cells:
+                    logger.warning(f"Removing invalid cell data '{key}' from mesh with {mesh_obj.n_cells} cells (array length {len(mesh_obj.cell_data[key])})")
+                    del mesh_obj.cell_data[key]
         airfoil = pv.merge([section, te])
+        # Clean merged mesh cell data
+        for key in list(airfoil.cell_data.keys()):
+            if len(airfoil.cell_data[key]) != airfoil.n_cells:
+                logger.warning(f"Removing invalid cell data '{key}' from merged mesh with {airfoil.n_cells} cells (array length {len(airfoil.cell_data[key])})")
+                del airfoil.cell_data[key]
     else:
         airfoil = section
     points_2d = airfoil.points[:, :2].tolist()

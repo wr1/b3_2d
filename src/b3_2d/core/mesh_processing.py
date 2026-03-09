@@ -6,6 +6,7 @@ import logging
 import pickle
 import numpy as np
 import pyvista as pv
+import warnings
 from rich.progress import Progress
 from cgfoil.core.generate_mesh import generate_mesh
 from cgfoil.models import AirfoilMesh
@@ -102,11 +103,21 @@ def process_single_section(
         logger.info(
             f"AirfoilMesh created with {len(skins)} skins and {len(web_definition)} webs"
         )
-        mesh_result = generate_mesh(mesh)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            mesh_result = generate_mesh(mesh)
+            if w:
+                for warning in w:
+                    if "InvalidMesh" in str(warning.message):
+                        logger.warning(f"InvalidMesh warning for section {section_id}: {warning.message}")
+                        result["errors"].append(str(warning.message))
+                        result["success"] = False
+                        return result
         logger.info(f"Mesh generation completed, result type: {type(mesh_result)}")
         if mesh.vtk:
             save_mesh_to_vtk(mesh_result, mesh, mesh.vtk)
             logger.info(f"VTK file saved to {vtk_output_file}")
+            result["created_files"].append(vtk_output_file)
             # Debug: load and inspect VTK
             loaded_mesh = pv.read(vtk_output_file)
             logger.info(
@@ -117,7 +128,6 @@ def process_single_section(
                 logger.info(f"Unique material_ids in VTK: {unique_mats}")
             else:
                 logger.warning("No material_id in VTK cell_data")
-            result["created_files"].append(vtk_output_file)
         mesh_file = os.path.join(section_dir, "mesh.pck")
         with open(mesh_file, "wb") as f:
             pickle.dump(mesh_result, f)

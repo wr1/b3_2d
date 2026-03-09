@@ -26,10 +26,10 @@ class B32dPostStep(b3_state):
         matdb = self.config.get("matdb", {})
 
         # Plot BOM spanwise if data exists
-        bom_plot_file = output_dir / "bom_spanwise.png"
+        bom_plot_file = str(output_dir / "bom_spanwise.png")
         self.logger.info(f"Attempting to generate BOM spanwise plot: {bom_plot_file}")
-        plot_bom_spanwise(str(output_dir), str(bom_plot_file), matdb)
-        if bom_plot_file.exists():
+        plot_bom_spanwise(str(output_dir), bom_plot_file, matdb)
+        if Path(bom_plot_file).exists():
             self.logger.info(f"BOM plot saved to {bom_plot_file}")
         else:
             self.logger.warning(
@@ -37,14 +37,13 @@ class B32dPostStep(b3_state):
             )
 
         # Plot ANBA spanwise if data exists
-        anba_plot_file = output_dir / "anba_spanwise.png"
+        anba_plot_file = str(output_dir / "anba_spanwise.png")
         self.logger.info(f"Attempting to generate ANBA spanwise plot: {anba_plot_file}")
-        plot_span_anba(str(output_dir), str(anba_plot_file))
-        if anba_plot_file.exists():
+        plot_span_anba(str(output_dir), anba_plot_file)
+        if Path(anba_plot_file).exists():
             self.logger.info(f"ANBA plot saved to {anba_plot_file}")
         else:
             self.logger.warning(
-                f"ANBA plot not generated (no ANBA data found): {anba_plot_file}"
-            )
+                f"ANBA plot not generated (no ANBA data found): {anba_plot_file}")
 
         self.logger.info("Postprocessing completed.")

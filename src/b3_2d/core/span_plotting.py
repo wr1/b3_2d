@@ -111,5 +111,7 @@ def plot_span_anba(output_dir: str, output_file: str) -> None:
         return
     centers_file = output_file.replace(".png", "_centers.png")
     plot_span_centers(data_list, centers_file)
+    logger.info(f"Span ANBA centers plot saved to {centers_file}")
     stiff_file = output_file.replace(".png", "_stiff.png")
     plot_span_stiff(data_list, stiff_file)
+    logger.info(f"Span ANBA stiffness plot saved to {stiff_file}")

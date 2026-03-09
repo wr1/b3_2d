@@ -98,6 +98,7 @@ def plot_section_anba(
     plt.tight_layout()
     plt.savefig(output_file, dpi=400)
     plt.close()
+    logger.info(f"ANBA plot saved to {output_file}")
     if log_file and lock:
         with lock:
             with open(log_file, "a") as f:
@@ -109,11 +110,13 @@ def plot_section_debug(
 ) -> None:
     """Plot original and transformed section for debugging."""
     # Plot original section
+    original_file = os.path.join(output_dir, f"section_{section_id}_original.png")
     plot_mesh(
         section_mesh,
         scalar="panel_id",
-        output_file=os.path.join(output_dir, f"section_{section_id}_original.png"),
+        output_file=original_file,
     )
+    logger.info(f"Debug original plot saved to {original_file}")
     # Apply transformations
     min_panel_id = section_mesh.cell_data["panel_id"].min()
     section = section_mesh.threshold(
@@ -128,13 +131,24 @@ def plot_section_debug(
     te = section_mesh.threshold(value=(min_panel_id, min_panel_id), scalars="panel_id")
     section_bb = bb_size(section)
     te_bb = bb_size(te)
+    logger.info(f"Section n_cells: {section.n_cells}, TE n_cells: {te.n_cells}")
+    for key in section.cell_data.keys():
+        logger.info(f"Section {key}: {len(section.cell_data[key])}")
+    for key in te.cell_data.keys():
+        logger.info(f"TE {key}: {len(te.cell_data[key])}")
     if te_bb > 0.03 * section_bb:
-        transformed = pv.merge([section, te])
+        try:
+            transformed = pv.merge([section, te])
+        except Exception as e:
+            logger.warning(f"Failed to merge section and TE meshes for section {section_id}: {e}. Using section only.")
+            transformed = section
     else:
         transformed = section
     # Plot transformed section
+    transformed_file = os.path.join(output_dir, f"section_{section_id}_transformed.png")
     plot_mesh(
         transformed,
         scalar="panel_id",
-        output_file=os.path.join(output_dir, f"section_{section_id}_transformed.png"),
+        output_file=transformed_file,
     )
+    logger.info(f"Debug transformed plot saved to {transformed_file}")

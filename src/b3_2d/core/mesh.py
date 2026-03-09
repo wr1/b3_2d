@@ -10,6 +10,7 @@ try:
         define_skins_and_webs,
         log_thicknesses,
     )
+    from .mesh_utils import validate_points, sort_points_by_y, bb_size
     from .bom import compute_bom
 except ImportError:
     process_vtp_multi_section = None
@@ -19,4 +20,7 @@ except ImportError:
     get_ply_thicknesses_and_materials = None
     define_skins_and_webs = None
     log_thicknesses = None
+    validate_points = None
+    sort_points_by_y = None
+    bb_size = None
     compute_bom = None
