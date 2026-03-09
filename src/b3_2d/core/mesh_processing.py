@@ -74,7 +74,7 @@ def process_single_section(
             get_ply_thicknesses_and_materials(airfoil, web_data)
         )
         if not airfoil_thicknesses:
-            msg = f"No thicknesses for section {section_id}, skipping"
+            msg = f"No thicknesses for section {section_id}, skipping. Available cell_data keys: {list(airfoil.cell_data.keys())}"
             logger.warning(msg)
             result["success"] = False
             result["errors"].append(msg)
