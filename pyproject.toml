@@ -5,26 +5,51 @@ build-backend = "hatchling.build"
 [project]
 name = "b3-2d"
 version = "0.1.0"
-requires-python = ">=3.10"
+# requires-python = ">=3.10"
+# dependencies = [
+#     "pyvista",
+#     "rich",
+#     "treeparse",
+#     # "b3_state", 
+#     # "cgfoil", # @ git+https://github.com/wr1/cgfoil.git@dev1",    
+#     "b3_state @ git+https://github.com/wr1/b3_state.git@dev1",
+#     "cgfoil @ git+https://github.com/wr1/cgfoil.git@dev1",
+#     "matplotlib",
+#     "numpy",
+#     "pydantic>=2.0",
+# ]
+#  @ git+https://github.com/wr1/b3_state.git@master",
+
+
+# [project]
+requires-python = ">=3.10"   # fixes the annoying 3.14 marker warning
+
 dependencies = [
     "pyvista",
     "rich",
     "treeparse",
-    "b3_state", 
-    "cgfoil", # @ git+https://github.com/wr1/cgfoil.git@dev1",
+    "b3-state",                    # ← just the plain name
+    "cgfoil",                      # ← just the plain name
     "matplotlib",
     "numpy",
     "pydantic>=2.0",
 ]
-#  @ git+https://github.com/wr1/b3_state.git@master",
+
+[dependency-groups]
+dev = [
+    "b3-state @ git+https://github.com/wr1/b3_state.git@master",   # or @dev1 if you prefer
+    "cgfoil @ git+https://github.com/wr1/cgfoil.git@dev1",
+    "pytest>=9.0.2",
+]
+
 
 [project.scripts]
 b3-2d = "b3_2d.cli:main"
 
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-]
+# [dependency-groups]
+# dev = [
+#     "pytest>=9.0.2",
+# ]
 [tool.hatch.metadata]
 allow-direct-references = true
 
