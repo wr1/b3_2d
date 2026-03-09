@@ -176,7 +176,8 @@ def define_skins_and_webs(
             )
         # Compute normal_ref from orientation
         if orientations and web_name in orientations:
-            ox, oy, oz = orientations[web_name]
+            orig = orientations[web_name]
+            ox, oy, oz = orig
             # Rotate by -twist around z
             twist_rad = math.radians(-twist)
             rx = ox * math.cos(twist_rad) - oy * math.sin(twist_rad)
@@ -188,6 +189,7 @@ def define_skins_and_webs(
             print(f"Web {web_name}: used normal_ref {normal_ref}")
         else:
             # Fallback to old logic
+            orig = [0, 1, 0]
             sign = 1 if idx % 2 == 0 else -1
             normal_ref = [sign, 0]
             logger.warning(
@@ -195,7 +197,7 @@ def define_skins_and_webs(
             )
             print(f"Web {web_name}: used fallback normal_ref {normal_ref}")
         web_definition[web_name] = Web(
-            coord_input=points, plies=plies, normal_ref=normal_ref
+            coord_input=points, plies=plies, normal_ref=normal_ref, orientation=orig
         )
         logger.info(
             f"Defined web {web_name}: {len(points)} points, {len(plies)} plies, normal_ref={normal_ref}"
