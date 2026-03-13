@@ -8,7 +8,7 @@ from ..core.mesh import process_vtp_multi_section
 from ..core.bom import compute_bom
 
 
-class B32dStep(b3_state):
+class b3_2d_step(b3_state):
     """b3_state step for 2D meshing using cgfoil."""
 
     workdir_key = "workdir"

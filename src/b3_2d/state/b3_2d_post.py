@@ -4,7 +4,7 @@ from ..core.bom_plotting import plot_bom_spanwise
 from ..core.span_plotting import plot_span_anba
 
 
-class B32dPostStep(b3_state):
+class b3_2d_post_step(b3_state):
     """b3_state step for postprocessing 2D meshes and ANBA results."""
 
     workdir_key = "workdir"

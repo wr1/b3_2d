@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.console import Console
 
 
-class B32dAnbaStep(b3_state):
+class b3_2d_anba_step(b3_state):
     """b3_state step for running ANBA4 on 2D meshes."""
 
     workdir_key = "workdir"
